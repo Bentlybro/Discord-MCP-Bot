@@ -4,11 +4,13 @@
 
 ## Features
 
+- **User Registration**: Discord slash commands for easy API key management (`/register`, `/mykey`, `/regenerate`, `/status`)
 - **MCP Integration**: Full Model Context Protocol support for seamless AI assistant integration
 - **Message Reading**: Fetch recent messages from Discord channels
 - **Advanced Search**: Search messages within specific channels or across entire guilds/servers
 - **Channel Discovery**: List all accessible Discord channels
-- **Security**: API key authentication and access control
+- **Secure Authentication**: Individual API keys per user with usage tracking
+- **Hosted Service Ready**: Designed for multi-user deployment with database storage
 - **Dual Interface**: Both MCP protocol and REST API endpoints
 - **Modular Architecture**: Clean, maintainable codebase with separated concerns
 
@@ -56,31 +58,44 @@ src/
    # Edit .env with your Discord bot token and settings
    ```
 
-4. **Setup MCP configuration**:
-   ```bash
-   cp mcp_config.example.json .mcp.json
-   # Edit .mcp.json with your API key
-   ```
-
-5. **Run the server**:
+4. **Run the server**:
    ```bash
    python main.py
    ```
 
-6. **Add to Claude Code (via local file)**:
+## For Server Operators (Hosting)
+
+If you want to host this MCP server for others to use:
+
+1. **Deploy the server** on your domain/server
+2. **Users register via Discord** - They use slash commands to get API keys
+3. **Users connect via HTTP** - Using their personal API key
+
+## For End Users (Connecting to a Hosted Server)
+
+To connect to a hosted Discord MCP server:
+
+1. **Join the Discord server** where the MCP bot is running
+
+2. **Register for access** using Discord slash commands:
+   ```
+   /register
+   ```
+   The bot will send you a personal API key via DM or ephemeral message.
+
+3. **Connect to the MCP server**:
    ```bash
-   claude mcp add discord-mcp-bot .mcp.json
+   claude mcp add --transport http discord-mcp-bot http://server-domain.com:8000 --header "Authorization: Bearer YOUR_API_KEY_FROM_DISCORD_BOT"
    ```
 
-7. **(Alternative) Add to Claude Code via HTTP**:
+   Replace:
+   - `server-domain.com:8000` with the actual server URL
+   - `YOUR_API_KEY_FROM_DISCORD_BOT` with the API key you received from the bot
 
-   You can also connect to the MCP server directly over HTTP using an API key:
-
-   ```bash
-   claude mcp add --transport http discord-mcp-bot http://0.0.0.0:8000 --header "Authorization: Bearer your_secure_api_key_for_mcp_access"
-   ```
-
-   Replace `your_secure_api_key_for_mcp_access` with the actual API key you configured in your `.env` and `.mcp.json` files.
+4. **Manage your access**:
+   - `/mykey` - Get your current API key
+   - `/regenerate` - Generate a new API key (invalidates old one)
+   - `/status` - Check your account status and usage
 
 <details>
 <summary>Available Tools (MCP)</summary>
