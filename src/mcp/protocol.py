@@ -1,5 +1,5 @@
 import logging
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -7,7 +7,7 @@ class MCPProtocolHandler:
     def __init__(self, discord_bot):
         self.discord_bot = discord_bot
 
-    async def handle_request(self, request: Dict[str, Any]) -> Dict[str, Any]:
+    async def handle_request(self, request: Dict[str, Any], requesting_user_id: Optional[str] = None) -> Dict[str, Any]:
         """Handle incoming MCP protocol requests"""
         logger.info(f"Received MCP request: {request}")
         method = request.get("method")
@@ -18,7 +18,7 @@ class MCPProtocolHandler:
             elif method == "tools/list":
                 return self._handle_tools_list(request)
             elif method == "tools/call":
-                return await self._handle_tools_call(request)
+                return await self._handle_tools_call(request, requesting_user_id)
             elif method == "notifications/initialized":
                 return {}  # Just acknowledge the notification
             else:
@@ -175,7 +175,7 @@ class MCPProtocolHandler:
         logger.info(f"Sending tools/list response: {response}")
         return response
 
-    async def _handle_tools_call(self, request: Dict[str, Any]) -> Dict[str, Any]:
+    async def _handle_tools_call(self, request: Dict[str, Any], requesting_user_id: Optional[str] = None) -> Dict[str, Any]:
         """Handle MCP tools/call request"""
         tool_name = request["params"]["name"]
         args = request["params"]["arguments"]
@@ -206,14 +206,16 @@ class MCPProtocolHandler:
             result_data = await self.discord_bot.send_message(
                 int(args["channel_id"]),
                 args["content"],
-                args.get("reply_to_message_id")
+                args.get("reply_to_message_id"),
+                requesting_user_id
             )
         elif tool_name == "ask_discord_question":
             result_data = await self.discord_bot.wait_for_reply(
                 int(args["channel_id"]),
                 args["question"],
                 args.get("timeout", 300),
-                args.get("target_user_id")
+                args.get("target_user_id"),
+                requesting_user_id
             )
         elif tool_name == "list_guild_users":
             result_data = await self.discord_bot.list_guild_users(

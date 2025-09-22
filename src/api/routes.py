@@ -55,7 +55,7 @@ class APIRoutes:
                 # Verify API key
                 user_id = await verify_api_key(credentials)
                 logger.info(f"MCP request from user {user_id}: {request.get('method', 'unknown')}")
-                return await self.mcp_handler.handle_request(request)
+                return await self.mcp_handler.handle_request(request, user_id)
             except Exception as e:
                 logger.error(f"MCP handler error: {e}")
                 # Return proper JSON-RPC error
@@ -154,7 +154,8 @@ class APIRoutes:
             result = await self.discord_bot.send_message(
                 int(request.channel_id),
                 request.content,
-                request.reply_to_message_id
+                request.reply_to_message_id,
+                user_id
             )
 
             if "error" in result:
@@ -175,7 +176,8 @@ class APIRoutes:
                 int(request.channel_id),
                 request.question,
                 request.timeout,
-                request.target_user_id
+                request.target_user_id,
+                user_id
             )
 
             if "error" in result:

@@ -327,7 +327,7 @@ class DiscordBot:
         except Exception as e:
             return {"error": str(e)}
 
-    async def send_message(self, channel_id: int, content: str, reply_to_message_id: Optional[str] = None) -> dict:
+    async def send_message(self, channel_id: int, content: str, reply_to_message_id: Optional[str] = None, requesting_user_id: Optional[str] = None) -> dict:
         """Send a message to a Discord channel"""
         try:
             if not self.check_channel_access(channel_id):
@@ -354,8 +354,23 @@ class DiscordBot:
                 except discord.Forbidden:
                     return {"error": "No permission to access reply target message"}
 
+            # Add attribution footer if we have a requesting user
+            final_content = content
+            if requesting_user_id:
+                try:
+                    requesting_user = self.bot.get_user(int(requesting_user_id))
+                    if requesting_user:
+                        attribution = f"\n\n*— Asked by {requesting_user.display_name}'s Claude*"
+                    else:
+                        # Fallback if user not found
+                        attribution = f"\n\n*— Asked by <@{requesting_user_id}>'s Claude*"
+                    final_content = f"{content}{attribution}"
+                except Exception as e:
+                    logger.warning(f"Failed to add attribution: {e}")
+                    # Continue without attribution if there's an error
+
             # Send the message
-            sent_message = await channel.send(content, reference=reference)
+            sent_message = await channel.send(final_content, reference=reference)
 
             return {
                 "success": True,
@@ -376,11 +391,11 @@ class DiscordBot:
             logger.error(f"Error sending message: {str(e)}")
             return {"error": str(e)}
 
-    async def wait_for_reply(self, channel_id: int, question: str, timeout: int = 300, target_user_id: Optional[str] = None) -> dict:
+    async def wait_for_reply(self, channel_id: int, question: str, timeout: int = 300, target_user_id: Optional[str] = None, requesting_user_id: Optional[str] = None) -> dict:
         """Send a question and wait for a reply in a Discord channel"""
         try:
-            # First send the question
-            send_result = await self.send_message(channel_id, question)
+            # First send the question with attribution
+            send_result = await self.send_message(channel_id, question, requesting_user_id=requesting_user_id)
             if "error" in send_result:
                 return send_result
 
