@@ -13,7 +13,7 @@
 - **Interactive Conversations**: Ask questions and wait for user responses in real-time
 - **Secure Authentication**: Individual API keys per user with usage tracking
 - **Hosted Service Ready**: Designed for multi-user deployment with database storage
-- **Dual Interface**: Both MCP protocol and REST API endpoints
+- **MCP Protocol**: Pure Model Context Protocol interface for AI assistant integration
 - **Modular Architecture**: Clean, maintainable codebase with separated concerns
 
 <details>
@@ -115,19 +115,11 @@ To connect to a hosted Discord MCP server:
 </details>
 
 <details>
-<summary>API Endpoints (HTTP)</summary>
+<summary>HTTP Endpoints</summary>
 
-- `GET /` - Health check
-- `POST /` - MCP protocol handler
-- `POST /get_messages` - Get channel messages
-- `POST /search_messages` - Search channel messages
-- `POST /search_guild_messages` - Search guild messages
-- `POST /get_message_by_url` - Get message by Discord URL
-- `POST /send_message` - Send message to channel
-- `POST /ask_question` - Send question and wait for reply
-- `POST /list_guild_users` - List users in a specific guild
-- `POST /list_all_users` - List users across all accessible guilds
-- `GET /channels` - List channels
+- `GET /` - Health check and service info
+- `GET /health` - Simple health check for monitoring
+- `POST /` - **MCP protocol handler** (main interface)
 
 </details>
 
