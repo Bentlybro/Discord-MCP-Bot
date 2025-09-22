@@ -583,9 +583,7 @@ class DiscordBot:
             user = await db.create_user(user_id, username)
 
             # Create connection instructions
-            server_url = f"http://{settings.api_host}:{settings.api_port}"
-            if settings.api_host == "0.0.0.0":
-                server_url = f"http://your-domain.com:{settings.api_port}"
+            server_url = settings.public_domain
 
             instructions = f"""🎉 **Registration Successful!**
 
@@ -632,9 +630,7 @@ claude mcp add --transport http discord-mcp-bot {server_url} --header "Authoriza
                 )
                 return
 
-            server_url = f"http://{settings.api_host}:{settings.api_port}"
-            if settings.api_host == "0.0.0.0":
-                server_url = f"http://your-domain.com:{settings.api_port}"
+            server_url = settings.public_domain
 
             message = f"""🔑 **Your API Key:** ||`{user.api_key}`|| (click to reveal)
 
@@ -671,9 +667,7 @@ claude mcp add --transport http discord-mcp-bot {server_url} --header "Authoriza
                 )
                 return
 
-            server_url = f"http://{settings.api_host}:{settings.api_port}"
-            if settings.api_host == "0.0.0.0":
-                server_url = f"http://your-domain.com:{settings.api_port}"
+            server_url = settings.public_domain
 
             message = f"""🔄 **New API Key Generated:** ||`{new_key}`|| (click to reveal)
 

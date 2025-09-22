@@ -11,6 +11,7 @@ class Settings:
         self.allowed_channels = self._parse_ids(os.getenv("ALLOWED_CHANNELS", ""))
         self.api_host = os.getenv("API_HOST", "0.0.0.0")
         self.api_port = int(os.getenv("API_PORT", "8000"))
+        self.public_domain = os.getenv("PUBLIC_DOMAIN", f"http://{self.api_host}:{self.api_port}")
 
     def _parse_ids(self, ids_string: str) -> List[int]:
         if not ids_string:
