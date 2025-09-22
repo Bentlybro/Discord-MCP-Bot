@@ -108,6 +108,66 @@ class MCPProtocolHandler:
                             },
                             "required": ["guild_id", "query"]
                         }
+                    },
+                    {
+                        "name": "get_message_by_url",
+                        "description": "Get a specific Discord message by its URL",
+                        "inputSchema": {
+                            "type": "object",
+                            "properties": {
+                                "message_url": {"type": "string"}
+                            },
+                            "required": ["message_url"]
+                        }
+                    },
+                    {
+                        "name": "send_discord_message",
+                        "description": "Send a message to a Discord channel",
+                        "inputSchema": {
+                            "type": "object",
+                            "properties": {
+                                "channel_id": {"type": "string"},
+                                "content": {"type": "string"},
+                                "reply_to_message_id": {"type": "string"}
+                            },
+                            "required": ["channel_id", "content"]
+                        }
+                    },
+                    {
+                        "name": "ask_discord_question",
+                        "description": "Send a question to Discord and wait for a reply (interactive conversation)",
+                        "inputSchema": {
+                            "type": "object",
+                            "properties": {
+                                "channel_id": {"type": "string"},
+                                "question": {"type": "string"},
+                                "timeout": {"type": "integer"},
+                                "target_user_id": {"type": "string"}
+                            },
+                            "required": ["channel_id", "question"]
+                        }
+                    },
+                    {
+                        "name": "list_guild_users",
+                        "description": "List all real users (not bots) in a specific Discord guild",
+                        "inputSchema": {
+                            "type": "object",
+                            "properties": {
+                                "guild_id": {"type": "string"},
+                                "include_bots": {"type": "boolean"}
+                            },
+                            "required": ["guild_id"]
+                        }
+                    },
+                    {
+                        "name": "list_all_users",
+                        "description": "List all real users (not bots) across all accessible guilds",
+                        "inputSchema": {
+                            "type": "object",
+                            "properties": {
+                                "include_bots": {"type": "boolean"}
+                            }
+                        }
                     }
                 ]
             }
@@ -139,6 +199,30 @@ class MCPProtocolHandler:
                 int(args["guild_id"]),
                 args["query"],
                 args.get("limit", 50)
+            )
+        elif tool_name == "get_message_by_url":
+            result_data = await self.discord_bot.get_message_by_url(args["message_url"])
+        elif tool_name == "send_discord_message":
+            result_data = await self.discord_bot.send_message(
+                int(args["channel_id"]),
+                args["content"],
+                args.get("reply_to_message_id")
+            )
+        elif tool_name == "ask_discord_question":
+            result_data = await self.discord_bot.wait_for_reply(
+                int(args["channel_id"]),
+                args["question"],
+                args.get("timeout", 300),
+                args.get("target_user_id")
+            )
+        elif tool_name == "list_guild_users":
+            result_data = await self.discord_bot.list_guild_users(
+                int(args["guild_id"]),
+                args.get("include_bots", False)
+            )
+        elif tool_name == "list_all_users":
+            result_data = await self.discord_bot.list_all_accessible_users(
+                args.get("include_bots", False)
             )
         elif tool_name == "list_discord_channels":
             result_data = self.discord_bot.list_channels()

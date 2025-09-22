@@ -5,7 +5,9 @@ import logging
 
 from ..models.discord_models import (
     MessageResponse, GetMessagesRequest, SearchMessagesRequest,
-    SearchGuildMessagesRequest, ChannelInfo
+    SearchGuildMessagesRequest, GetMessageByUrlRequest, ChannelInfo,
+    SendMessageRequest, SendMessageResponse, AskQuestionRequest, AskQuestionResponse,
+    UserInfo, ListGuildUsersRequest, ListAllUsersRequest, GuildUsersResponse, AllUsersResponse
 )
 from .middleware import verify_api_key
 
@@ -118,6 +120,20 @@ class APIRoutes:
 
             return [MessageResponse(**msg) for msg in result["messages"]]
 
+        @self.app.post("/get_message_by_url", response_model=MessageResponse)
+        async def get_message_by_url(
+            request: GetMessageByUrlRequest,
+            user_id: str = Depends(verify_api_key)
+        ):
+            logger.info(f"REST API: get_message_by_url from user {user_id}")
+            result = await self.discord_bot.get_message_by_url(request.message_url)
+
+            if "error" in result:
+                from fastapi import HTTPException
+                raise HTTPException(status_code=400, detail=result["error"])
+
+            return MessageResponse(**result["message"])
+
         @self.app.get("/channels", response_model=List[ChannelInfo])
         async def list_channels(user_id: str = Depends(verify_api_key)):
             logger.info(f"REST API: list_channels from user {user_id}")
@@ -128,3 +144,85 @@ class APIRoutes:
                 raise HTTPException(status_code=400, detail=result["error"])
 
             return [ChannelInfo(**ch) for ch in result["channels"]]
+
+        @self.app.post("/send_message", response_model=SendMessageResponse)
+        async def send_message(
+            request: SendMessageRequest,
+            user_id: str = Depends(verify_api_key)
+        ):
+            logger.info(f"REST API: send_message from user {user_id}")
+            result = await self.discord_bot.send_message(
+                int(request.channel_id),
+                request.content,
+                request.reply_to_message_id
+            )
+
+            if "error" in result:
+                return SendMessageResponse(success=False, error=result["error"])
+
+            return SendMessageResponse(
+                success=True,
+                message=MessageResponse(**result["message"])
+            )
+
+        @self.app.post("/ask_question", response_model=AskQuestionResponse)
+        async def ask_question(
+            request: AskQuestionRequest,
+            user_id: str = Depends(verify_api_key)
+        ):
+            logger.info(f"REST API: ask_question from user {user_id}")
+            result = await self.discord_bot.wait_for_reply(
+                int(request.channel_id),
+                request.question,
+                request.timeout,
+                request.target_user_id
+            )
+
+            if "error" in result:
+                question_message = None
+                if "question_message" in result:
+                    question_message = MessageResponse(**result["question_message"])
+
+                return AskQuestionResponse(
+                    success=False,
+                    error=result["error"],
+                    question_message=question_message,
+                    timeout=result.get("timeout")
+                )
+
+            return AskQuestionResponse(
+                success=True,
+                question_message=MessageResponse(**result["question_message"]),
+                response=MessageResponse(**result["response"])
+            )
+
+        @self.app.post("/list_guild_users", response_model=GuildUsersResponse)
+        async def list_guild_users(
+            request: ListGuildUsersRequest,
+            user_id: str = Depends(verify_api_key)
+        ):
+            logger.info(f"REST API: list_guild_users from user {user_id}")
+            result = await self.discord_bot.list_guild_users(
+                int(request.guild_id),
+                request.include_bots
+            )
+
+            if "error" in result:
+                from fastapi import HTTPException
+                raise HTTPException(status_code=400, detail=result["error"])
+
+            return GuildUsersResponse(**result)
+
+        @self.app.post("/list_all_users", response_model=AllUsersResponse)
+        async def list_all_users(
+            request: ListAllUsersRequest,
+            user_id: str = Depends(verify_api_key)
+        ):
+            logger.info(f"REST API: list_all_users from user {user_id}")
+            result = await self.discord_bot.list_all_accessible_users(request.include_bots)
+
+            if "error" in result:
+                from fastapi import HTTPException
+                raise HTTPException(status_code=400, detail=result["error"])
+
+            return AllUsersResponse(**result)
