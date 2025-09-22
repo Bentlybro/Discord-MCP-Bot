@@ -12,20 +12,28 @@ class MCPProtocolHandler:
         logger.info(f"Received MCP request: {request}")
         method = request.get("method")
 
-        if method == "initialize":
-            return self._handle_initialize(request)
-        elif method == "tools/list":
-            return self._handle_tools_list(request)
-        elif method == "tools/call":
-            return await self._handle_tools_call(request)
-        elif method == "notifications/initialized":
-            return {}  # Just acknowledge the notification
-        else:
-            logger.error(f"Unknown method: {method}")
+        try:
+            if method == "initialize":
+                return self._handle_initialize(request)
+            elif method == "tools/list":
+                return self._handle_tools_list(request)
+            elif method == "tools/call":
+                return await self._handle_tools_call(request)
+            elif method == "notifications/initialized":
+                return {}  # Just acknowledge the notification
+            else:
+                logger.warning(f"Unknown method: {method}")
+                return {
+                    "jsonrpc": "2.0",
+                    "id": request.get("id"),
+                    "error": {"code": -32601, "message": f"Unknown method: {method}"}
+                }
+        except Exception as e:
+            logger.error(f"Error handling MCP request: {e}")
             return {
                 "jsonrpc": "2.0",
                 "id": request.get("id"),
-                "error": {"code": -32601, "message": f"Unknown method: {method}"}
+                "error": {"code": -32603, "message": f"Internal error: {str(e)}"}
             }
 
     def _handle_initialize(self, request: Dict[str, Any]) -> Dict[str, Any]:

@@ -1,2 +1,3 @@
 .env
 *__pycache__
+discord_mcp.db

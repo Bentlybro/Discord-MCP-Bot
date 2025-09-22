@@ -67,10 +67,20 @@ src/
    python main.py
    ```
 
-6. **Add to Claude Code**:
+6. **Add to Claude Code (via local file)**:
    ```bash
    claude mcp add discord-mcp-bot .mcp.json
    ```
+
+7. **(Alternative) Add to Claude Code via HTTP**:
+
+   You can also connect to the MCP server directly over HTTP using an API key:
+
+   ```bash
+   claude mcp add --transport http discord-mcp-bot http://0.0.0.0:8000 --header "Authorization: Bearer your_secure_api_key_for_mcp_access"
+   ```
+
+   Replace `your_secure_api_key_for_mcp_access` with the actual API key you configured in your `.env` and `.mcp.json` files.
 
 <details>
 <summary>Available Tools (MCP)</summary>
@@ -99,10 +109,9 @@ src/
 
 Set these environment variables in your `.env` file:
 
-- `DISCORD_TOKEN` - Your Discord bot token
-- `API_KEY` - API key for authentication
-- `ALLOWED_GUILDS` - Comma-separated guild IDs (optional)
-- `ALLOWED_CHANNELS` - Comma-separated channel IDs (optional)
+- `DISCORD_TOKEN` - Your Discord bot token (required)
+- `ALLOWED_GUILDS` - Comma-separated guild IDs (optional - restricts to specific servers)
+- `ALLOWED_CHANNELS` - Comma-separated channel IDs (optional - restricts to specific channels)
 - `API_HOST` - Server host (default: 0.0.0.0)
 - `API_PORT` - Server port (default: 8000)
 

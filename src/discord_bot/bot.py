@@ -1,9 +1,11 @@
 import discord
 import logging
 from discord.ext import commands
+from discord import app_commands
 from typing import List, Optional
 
 from ..config.settings import settings
+from ..database.database import db
 
 logger = logging.getLogger(__name__)
 
@@ -22,6 +24,33 @@ class DiscordBot:
         async def on_ready():
             logger.info(f'{self.bot.user} has connected to Discord!')
             logger.info(f'Bot is in {len(self.bot.guilds)} guilds')
+
+            # Initialize database
+            await db.init_db()
+
+            # Sync slash commands
+            try:
+                synced = await self.bot.tree.sync()
+                logger.info(f"Synced {len(synced)} slash commands")
+            except Exception as e:
+                logger.error(f"Failed to sync commands: {e}")
+
+        # Add slash commands
+        @self.bot.tree.command(name="register", description="Register for MCP API access")
+        async def register_command(interaction: discord.Interaction):
+            await self._handle_register(interaction)
+
+        @self.bot.tree.command(name="mykey", description="Get your current API key")
+        async def mykey_command(interaction: discord.Interaction):
+            await self._handle_get_key(interaction)
+
+        @self.bot.tree.command(name="regenerate", description="Regenerate your API key")
+        async def regenerate_command(interaction: discord.Interaction):
+            await self._handle_regenerate(interaction)
+
+        @self.bot.tree.command(name="status", description="Check your account status")
+        async def status_command(interaction: discord.Interaction):
+            await self._handle_status(interaction)
 
     def check_channel_access(self, channel_id: int) -> bool:
         """Check if bot has access to a specific channel"""
@@ -207,3 +236,177 @@ class DiscordBot:
     def guild_count(self) -> int:
         """Get number of guilds bot is in"""
         return len(self.bot.guilds) if self.bot.is_ready() else 0
+
+    async def _handle_register(self, interaction: discord.Interaction):
+        """Handle /register command"""
+        try:
+            user_id = str(interaction.user.id)
+            username = str(interaction.user)
+
+            # Check if user already exists
+            existing_user = await db.get_user_by_discord_id(user_id)
+            if existing_user:
+                await interaction.response.send_message(
+                    "✅ You're already registered! Use `/mykey` to get your API key.",
+                    ephemeral=True
+                )
+                return
+
+            # Create new user
+            user = await db.create_user(user_id, username)
+
+            # Create connection instructions
+            server_url = f"http://{settings.api_host}:{settings.api_port}"
+            if settings.api_host == "0.0.0.0":
+                server_url = f"http://your-domain.com:{settings.api_port}"
+
+            instructions = f"""🎉 **Registration Successful!**
+
+**Your API Key:** ||`{user.api_key}`|| (click to reveal)
+
+**To connect with Claude Code:**
+```bash
+claude mcp add --transport http discord-mcp-bot {server_url} --header "Authorization: Bearer {user.api_key}"
+```
+
+**Available MCP Tools:**
+• `get_discord_messages` - Fetch recent messages
+• `search_discord_messages` - Search in specific channels
+• `search_guild_messages` - Search entire servers
+• `list_discord_channels` - List accessible channels
+
+⚠️ **Keep your API key secure!** Use `/regenerate` if it's compromised."""
+
+            # Try to DM first, fallback to ephemeral
+            try:
+                await interaction.user.send(instructions)
+                await interaction.response.send_message(
+                    "✅ Registration complete! Check your DMs for your API key and setup instructions.",
+                    ephemeral=True
+                )
+            except discord.Forbidden:
+                await interaction.response.send_message(instructions, ephemeral=True)
+
+        except Exception as e:
+            logger.error(f"Registration error: {e}")
+            await interaction.response.send_message(
+                "❌ Registration failed. Please try again later.",
+                ephemeral=True
+            )
+
+    async def _handle_get_key(self, interaction: discord.Interaction):
+        """Handle /mykey command"""
+        try:
+            user = await db.get_user_by_discord_id(str(interaction.user.id))
+            if not user:
+                await interaction.response.send_message(
+                    "❌ You're not registered yet. Use `/register` first.",
+                    ephemeral=True
+                )
+                return
+
+            server_url = f"http://{settings.api_host}:{settings.api_port}"
+            if settings.api_host == "0.0.0.0":
+                server_url = f"http://your-domain.com:{settings.api_port}"
+
+            message = f"""🔑 **Your API Key:** ||`{user.api_key}`|| (click to reveal)
+
+**Connection Command:**
+```bash
+claude mcp add --transport http discord-mcp-bot {server_url} --header "Authorization: Bearer {user.api_key}"
+```"""
+
+            # Try DM first, fallback to ephemeral
+            try:
+                await interaction.user.send(message)
+                await interaction.response.send_message(
+                    "✅ API key sent to your DMs!",
+                    ephemeral=True
+                )
+            except discord.Forbidden:
+                await interaction.response.send_message(message, ephemeral=True)
+
+        except Exception as e:
+            logger.error(f"Get key error: {e}")
+            await interaction.response.send_message(
+                "❌ Failed to retrieve API key.",
+                ephemeral=True
+            )
+
+    async def _handle_regenerate(self, interaction: discord.Interaction):
+        """Handle /regenerate command"""
+        try:
+            new_key = await db.regenerate_api_key(str(interaction.user.id))
+            if not new_key:
+                await interaction.response.send_message(
+                    "❌ You're not registered yet. Use `/register` first.",
+                    ephemeral=True
+                )
+                return
+
+            server_url = f"http://{settings.api_host}:{settings.api_port}"
+            if settings.api_host == "0.0.0.0":
+                server_url = f"http://your-domain.com:{settings.api_port}"
+
+            message = f"""🔄 **New API Key Generated:** ||`{new_key}`|| (click to reveal)
+
+⚠️ **Your old key is now invalid!**
+
+**Updated Connection Command:**
+```bash
+claude mcp remove discord-mcp-bot
+claude mcp add --transport http discord-mcp-bot {server_url} --header "Authorization: Bearer {new_key}"
+```"""
+
+            # Try DM first, fallback to ephemeral
+            try:
+                await interaction.user.send(message)
+                await interaction.response.send_message(
+                    "✅ New API key generated and sent to your DMs!",
+                    ephemeral=True
+                )
+            except discord.Forbidden:
+                await interaction.response.send_message(message, ephemeral=True)
+
+        except Exception as e:
+            logger.error(f"Regenerate error: {e}")
+            await interaction.response.send_message(
+                "❌ Failed to regenerate API key.",
+                ephemeral=True
+            )
+
+    async def _handle_status(self, interaction: discord.Interaction):
+        """Handle /status command"""
+        try:
+            user = await db.get_user_by_discord_id(str(interaction.user.id))
+            if not user:
+                await interaction.response.send_message(
+                    "❌ You're not registered yet. Use `/register` first.",
+                    ephemeral=True
+                )
+                return
+
+            status_emoji = "✅" if user.is_active else "❌"
+            last_used = user.last_used.strftime("%Y-%m-%d %H:%M UTC") if user.last_used else "Never"
+
+            status_msg = f"""📊 **Account Status**
+
+**Status:** {status_emoji} {"Active" if user.is_active else "Inactive"}
+**Username:** {user.discord_username}
+**Created:** {user.created_at.strftime("%Y-%m-%d %H:%M UTC")}
+**Last Used:** {last_used}
+**Usage Count:** {user.usage_count} requests
+
+**Commands:**
+• `/mykey` - Get your API key
+• `/regenerate` - Generate new API key
+• `/register` - Register (if needed)"""
+
+            await interaction.response.send_message(status_msg, ephemeral=True)
+
+        except Exception as e:
+            logger.error(f"Status error: {e}")
+            await interaction.response.send_message(
+                "❌ Failed to get status.",
+                ephemeral=True
+            )
