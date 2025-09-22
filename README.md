@@ -1,179 +1,92 @@
 # Discord MCP Bot
 
-A Discord bot that exposes an MCP (Model Context Protocol) compatible API, allowing Claude and other LLMs to read messages from Discord servers.
+A Discord bot that exposes Discord API functionality through the Model Context Protocol (MCP), allowing AI assistants to read and search Discord messages.
+
+## Project Structure
+
+```
+DiscordMCPBot/
+├── src/
+│   ├── api/
+│   │   ├── __init__.py
+│   │   ├── routes.py        # FastAPI route definitions
+│   │   └── middleware.py    # CORS and rate limiting
+│   ├── config/
+│   │   ├── __init__.py
+│   │   └── settings.py      # Configuration management
+│   ├── discord_bot/
+│   │   ├── __init__.py
+│   │   └── bot.py          # Discord bot logic
+│   ├── mcp/
+│   │   ├── __init__.py
+│   │   └── protocol.py     # MCP protocol handling
+│   ├── models/
+│   │   ├── __init__.py
+│   │   └── discord_models.py # Pydantic models
+│   └── __init__.py
+├── main.py                 # Application entry point
+├── rate_limiter.py        # Rate limiting utility
+├── requirements.txt       # Python dependencies
+├── .env.example          # Environment variables template
+└── .mcp.json             # MCP configuration
+```
 
 ## Features
 
-- **Message Reading**: Fetch recent messages from Discord channels
-- **Message Search**: Search for messages containing specific text
-- **Channel Listing**: Get available channels the bot has access to
+- **Discord Message Reading**: Fetch recent messages from channels
+- **Message Search**: Search for messages in specific channels or entire guilds
+- **Channel Listing**: List all accessible Discord channels
+- **MCP Protocol**: Full Model Context Protocol support for AI integration
+- **REST API**: Traditional HTTP endpoints alongside MCP
 - **Security**: API key authentication and rate limiting
-- **Access Control**: Restrict access to specific guilds and channels
+- **Access Control**: Guild and channel restrictions
 
-## API Endpoints
+## Setup
 
-### GET /
-Health check endpoint that returns bot status.
+1. **Install dependencies**:
+   ```bash
+   pip install -r requirements.txt
+   ```
 
-### POST /get_messages
-Fetch recent messages from a Discord channel.
+2. **Configure environment**:
+   ```bash
+   cp .env.example .env
+   # Edit .env with your Discord bot token and settings
+   ```
 
-**Request Body:**
-```json
-{
-  "channel_id": "123456789012345678",
-  "limit": 10,
-  "before_message_id": "987654321098765432"
-}
-```
+3. **Add MCP server to Claude Code**:
+   ```bash
+   claude mcp add discord-mcp-bot .mcp.json
+   ```
 
-**Response:**
-```json
-[
-  {
-    "id": "message_id",
-    "author": "display_name",
-    "author_id": "user_id",
-    "content": "message content",
-    "timestamp": "2023-12-01T10:30:00.000Z",
-    "channel_id": "channel_id",
-    "channel_name": "channel_name",
-    "guild_id": "guild_id",
-    "guild_name": "guild_name"
-  }
-]
-```
+4. **Run the server**:
+   ```bash
+   python main.py
+   ```
 
-### POST /search_messages
-Search for messages containing specific text.
+## Available Tools (MCP)
 
-**Request Body:**
-```json
-{
-  "channel_id": "123456789012345678",
-  "query": "search term",
-  "limit": 10
-}
-```
+- `get_discord_messages` - Fetch recent messages from a channel
+- `search_discord_messages` - Search messages in a specific channel
+- `search_guild_messages` - Search messages across an entire guild
+- `list_discord_channels` - List all accessible channels
 
-### GET /channels
-List all accessible channels.
+## API Endpoints (HTTP)
 
-## Setup Instructions
+- `GET /` - Health check
+- `POST /` - MCP protocol handler
+- `POST /get_messages` - Get channel messages
+- `POST /search_messages` - Search channel messages
+- `POST /search_guild_messages` - Search guild messages
+- `GET /channels` - List channels
 
-### 1. Discord Bot Setup
+## Configuration
 
-1. Go to https://discord.com/developers/applications
-2. Create a new application
-3. Go to the "Bot" section
-4. Create a bot and copy the token
-5. Enable the following bot permissions:
-   - Read Messages/View Channels
-   - Read Message History
-6. Enable the following privileged gateway intents:
-   - Message Content Intent
-7. Invite the bot to your server with the required permissions
+Set these environment variables in your `.env` file:
 
-### 2. Installation
-
-```bash
-# Clone or download this repository
-cd DiscordMCPBot
-
-# Install dependencies
-pip install -r requirements.txt
-
-# Copy the environment template
-cp .env.example .env
-```
-
-### 3. Configuration
-
-Edit the `.env` file with your settings:
-
-```env
-DISCORD_TOKEN=your_bot_token_here
-API_KEY=your_secure_api_key_here
-ALLOWED_GUILDS=guild_id_1,guild_id_2
-ALLOWED_CHANNELS=channel_id_1,channel_id_2
-API_HOST=127.0.0.1
-API_PORT=8000
-```
-
-**Configuration Options:**
-- `DISCORD_TOKEN`: Your Discord bot token
-- `API_KEY`: A secure key for API authentication
-- `ALLOWED_GUILDS`: Comma-separated list of guild IDs (optional, empty = all guilds)
-- `ALLOWED_CHANNELS`: Comma-separated list of channel IDs (optional, empty = all channels)
-- `API_HOST`: API server host (default: 127.0.0.1)
-- `API_PORT`: API server port (default: 8000)
-
-### 4. Running the Bot
-
-```bash
-python discord_mcp_bot.py
-```
-
-The bot will start both the Discord client and the API server.
-
-## Using with Claude
-
-### Authentication
-
-All API requests require the `Authorization` header:
-```
-Authorization: Bearer your_api_key_here
-```
-
-### Rate Limiting
-
-- 100 requests per minute per IP address
-- Rate limit information is included in error responses
-
-### Example Usage
-
-```bash
-# Get recent messages
-curl -X POST "http://127.0.0.1:8000/get_messages" \
-  -H "Authorization: Bearer your_api_key_here" \
-  -H "Content-Type: application/json" \
-  -d '{"channel_id": "123456789012345678", "limit": 5}'
-
-# Search messages
-curl -X POST "http://127.0.0.1:8000/search_messages" \
-  -H "Authorization: Bearer your_api_key_here" \
-  -H "Content-Type: application/json" \
-  -d '{"channel_id": "123456789012345678", "query": "hello", "limit": 5}'
-
-# List channels
-curl -X GET "http://127.0.0.1:8000/channels" \
-  -H "Authorization: Bearer your_api_key_here"
-```
-
-## Security Considerations
-
-1. **API Key**: Use a strong, unique API key
-2. **Access Control**: Limit `ALLOWED_GUILDS` and `ALLOWED_CHANNELS` to only what's necessary
-3. **Network**: Consider running behind a reverse proxy with HTTPS in production
-4. **Rate Limiting**: Built-in rate limiting helps prevent abuse
-5. **Discord Permissions**: Only grant the minimum required Discord permissions
-
-## Troubleshooting
-
-### Bot Not Connecting
-- Verify the Discord token is correct
-- Ensure the bot has been invited to the server
-- Check that required intents are enabled
-
-### API Access Issues
-- Verify the API key matches your configuration
-- Check that the channel/guild IDs are in your allowed lists
-- Ensure the bot has permission to read the target channels
-
-### Rate Limiting
-- Default limit is 100 requests per minute per IP
-- Wait for the reset time or adjust the rate limit settings
-
-## License
-
-This project is open source. Use responsibly and in accordance with Discord's Terms of Service.
+- `DISCORD_TOKEN` - Your Discord bot token
+- `API_KEY` - API key for authentication
+- `ALLOWED_GUILDS` - Comma-separated guild IDs (optional)
+- `ALLOWED_CHANNELS` - Comma-separated channel IDs (optional)
+- `API_HOST` - Server host (default: 0.0.0.0)
+- `API_PORT` - Server port (default: 8000)
