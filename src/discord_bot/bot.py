@@ -323,7 +323,7 @@ class DiscordBot:
         except Exception as e:
             return {"error": str(e)}
 
-    async def send_message(self, channel_id: int, content: str, reply_to_message_id: Optional[str] = None, requesting_user_id: Optional[str] = None) -> dict:
+    async def send_message(self, channel_id: int, content: str, reply_to_message_id: Optional[str] = None, requesting_user_id: Optional[str] = None, is_question: bool = False) -> dict:
         """Send a message to a Discord channel"""
         try:
             if not self.check_channel_access(channel_id):
@@ -355,11 +355,12 @@ class DiscordBot:
             if requesting_user_id:
                 try:
                     requesting_user = self.bot.get_user(int(requesting_user_id))
+                    action = "Asked" if is_question else "Sent"
                     if requesting_user:
-                        attribution = f"\n\n*— Asked by {requesting_user.display_name}'s Claude*"
+                        attribution = f"\n\n*— {action} by {requesting_user.display_name}'s Claude*"
                     else:
                         # Fallback if user not found
-                        attribution = f"\n\n*— Asked by <@{requesting_user_id}>'s Claude*"
+                        attribution = f"\n\n*— {action} by <@{requesting_user_id}>'s Claude*"
                     final_content = f"{content}{attribution}"
                 except Exception as e:
                     logger.warning(f"Failed to add attribution: {e}")
@@ -390,8 +391,8 @@ class DiscordBot:
     async def wait_for_reply(self, channel_id: int, question: str, timeout: int = 300, target_user_id: Optional[str] = None, requesting_user_id: Optional[str] = None) -> dict:
         """Send a question and wait for a reply in a Discord channel"""
         try:
-            # First send the question with attribution
-            send_result = await self.send_message(channel_id, question, requesting_user_id=requesting_user_id)
+            # First send the question with attribution (mark as question)
+            send_result = await self.send_message(channel_id, question, requesting_user_id=requesting_user_id, is_question=True)
             if "error" in send_result:
                 return send_result
 
