@@ -4,14 +4,16 @@
 
 ## Features
 
-- **User Registration**: Discord slash commands for easy API key management (`/register`, `/mykey`, `/regenerate`, `/status`)
+- **User Registration**: Discord slash commands for easy API key management (`/register`, `/regenerate`, `/status`)
 - **MCP Integration**: Full Model Context Protocol support for seamless AI assistant integration
 - **Message Reading**: Fetch recent messages from Discord channels
 - **Advanced Search**: Search messages within specific channels or across entire guilds/servers
 - **Channel Discovery**: List all accessible Discord channels
 - **Message Sending**: Send messages to Discord channels with optional reply support
 - **Interactive Conversations**: Ask questions and wait for user responses in real-time
-- **Secure Authentication**: Individual API keys per user with usage tracking
+- **Secure Authentication**: Individual API keys per user with SHA256 hashing
+- **One-Time Key Display**: API keys shown only once at creation/regeneration for maximum security
+- **Prefixed Keys**: API keys use `dmcp-` prefix for easy identification
 - **Hosted Service Ready**: Designed for multi-user deployment with database storage
 - **MCP Protocol**: Pure Model Context Protocol interface for AI assistant integration
 - **Modular Architecture**: Clean, maintainable codebase with separated concerns
@@ -87,7 +89,7 @@ To connect to a hosted Discord MCP server:
 
 3. **Connect to the MCP server**:
    ```bash
-   claude mcp add --transport http discord-mcp-bot http://server-domain.com:8000 --header "Authorization: Bearer YOUR_API_KEY_FROM_DISCORD_BOT"
+   claude mcp add --transport http discord-mcp-bot http://server-domain.com:8000/mcp --header "Authorization: Bearer YOUR_API_KEY_FROM_DISCORD_BOT"
    ```
 
    Replace:
@@ -95,9 +97,10 @@ To connect to a hosted Discord MCP server:
    - `YOUR_API_KEY_FROM_DISCORD_BOT` with the API key you received from the bot
 
 4. **Manage your access**:
-   - `/mykey` - Get your current API key
    - `/regenerate` - Generate a new API key (invalidates old one)
    - `/status` - Check your account status and usage
+
+   **Important:** API keys are only shown once when created/regenerated. Save them securely!
 
 <details>
 <summary>Available Tools (MCP)</summary>
@@ -119,7 +122,8 @@ To connect to a hosted Discord MCP server:
 
 - `GET /` - Health check and service info
 - `GET /health` - Simple health check for monitoring
-- `POST /` - **MCP protocol handler** (main interface)
+- `GET /mcp` - MCP SSE endpoint (optional, returns 405 if not implemented)
+- `POST /mcp` - **MCP protocol handler** (main interface, supports MCP 2025-03-26 spec)
 
 </details>
 
@@ -131,8 +135,12 @@ Set these environment variables in your `.env` file:
 - `DISCORD_TOKEN` - Your Discord bot token (required)
 - `ALLOWED_GUILDS` - Comma-separated guild IDs (optional - restricts to specific servers)
 - `ALLOWED_CHANNELS` - Comma-separated channel IDs (optional - restricts to specific channels)
+- `ALLOWED_ORIGINS` - Comma-separated origins for CORS (optional - restricts API access, default: all)
 - `API_HOST` - Server host (default: 0.0.0.0)
 - `API_PORT` - Server port (default: 8000)
+- `PUBLIC_DOMAIN` - Public URL for the server (default: http://API_HOST:API_PORT)
+
+**Security Note:** API keys are hashed using SHA256 before storage. Keys are only shown once at creation/regeneration.
 
 </details>
 

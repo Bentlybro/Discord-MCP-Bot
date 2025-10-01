@@ -47,10 +47,6 @@ class DiscordBot:
         async def register_command(interaction: discord.Interaction):
             await self._handle_register(interaction)
 
-        @self.bot.tree.command(name="mykey", description="Get your current API key")
-        async def mykey_command(interaction: discord.Interaction):
-            await self._handle_get_key(interaction)
-
         @self.bot.tree.command(name="regenerate", description="Regenerate your API key")
         async def regenerate_command(interaction: discord.Interaction):
             await self._handle_regenerate(interaction)
@@ -589,85 +585,38 @@ class DiscordBot:
             existing_user = await db.get_user_by_discord_id(user_id)
             if existing_user:
                 await interaction.response.send_message(
-                    "✅ You're already registered! Use `/mykey` to get your API key.",
+                    "✅ You're already registered! If you lost your API key, use `/regenerate` to create a new one.",
                     ephemeral=True
                 )
                 return
 
-            # Create new user
-            user = await db.create_user(user_id, username)
+            # Create new user (returns tuple of user and plaintext key)
+            user, plaintext_api_key = await db.create_user(user_id, username)
 
             # Create connection instructions
             server_url = settings.public_domain
 
             instructions = f"""🎉 **Registration Successful!**
 
-**Your API Key:** ||`{user.api_key}`|| (click to reveal)
+**Your API Key:** ||`{plaintext_api_key}`||
+⚠️ **SAVE THIS NOW! You won't be able to see it again.**
 
 **To connect with Claude Code:**
 ```bash
-claude mcp add --transport http discord-mcp-bot {server_url} --header "Authorization: Bearer {user.api_key}"
+claude mcp add --transport http discord-mcp-bot {server_url}/mcp --header "Authorization: Bearer {plaintext_api_key}"
 ```
 
-**Available MCP Tools:**
-• `get_discord_messages` - Fetch recent messages
-• `search_discord_messages` - Search in specific channels
-• `search_guild_messages` - Search entire servers
-• `list_discord_channels` - List accessible channels
+**Available Commands:**
+• `/regenerate` - Generate a new API key (if you lose this one)
+• `/status` - Check your account status and usage"""
 
-⚠️ **Keep your API key secure!** Use `/regenerate` if it's compromised."""
-
-            # Try to DM first, fallback to ephemeral
-            try:
-                await interaction.user.send(instructions)
-                await interaction.response.send_message(
-                    "✅ Registration complete! Check your DMs for your API key and setup instructions.",
-                    ephemeral=True
-                )
-            except discord.Forbidden:
-                await interaction.response.send_message(instructions, ephemeral=True)
+            # Always send as ephemeral (no DM fallback)
+            await interaction.response.send_message(instructions, ephemeral=True)
 
         except Exception as e:
             logger.error(f"Registration error: {e}")
             await interaction.response.send_message(
                 "❌ Registration failed. Please try again later.",
-                ephemeral=True
-            )
-
-    async def _handle_get_key(self, interaction: discord.Interaction):
-        """Handle /mykey command"""
-        try:
-            user = await db.get_user_by_discord_id(str(interaction.user.id))
-            if not user:
-                await interaction.response.send_message(
-                    "❌ You're not registered yet. Use `/register` first.",
-                    ephemeral=True
-                )
-                return
-
-            server_url = settings.public_domain
-
-            message = f"""🔑 **Your API Key:** ||`{user.api_key}`|| (click to reveal)
-
-**Connection Command:**
-```bash
-claude mcp add --transport http discord-mcp-bot {server_url} --header "Authorization: Bearer {user.api_key}"
-```"""
-
-            # Try DM first, fallback to ephemeral
-            try:
-                await interaction.user.send(message)
-                await interaction.response.send_message(
-                    "✅ API key sent to your DMs!",
-                    ephemeral=True
-                )
-            except discord.Forbidden:
-                await interaction.response.send_message(message, ephemeral=True)
-
-        except Exception as e:
-            logger.error(f"Get key error: {e}")
-            await interaction.response.send_message(
-                "❌ Failed to retrieve API key.",
                 ephemeral=True
             )
 
@@ -684,25 +633,26 @@ claude mcp add --transport http discord-mcp-bot {server_url} --header "Authoriza
 
             server_url = settings.public_domain
 
-            message = f"""🔄 **New API Key Generated:** ||`{new_key}`|| (click to reveal)
+            message = f"""🔄 **New API Key Generated!**
 
-⚠️ **Your old key is now invalid!**
+**Your New API Key:** ||`{new_key}`||
+⚠️ **SAVE THIS NOW! You won't be able to see it again.**
+
+**Your old key is now INVALID!**
 
 **Updated Connection Command:**
 ```bash
 claude mcp remove discord-mcp-bot
-claude mcp add --transport http discord-mcp-bot {server_url} --header "Authorization: Bearer {new_key}"
-```"""
+claude mcp add --transport http discord-mcp-bot {server_url}/mcp --header "Authorization: Bearer {new_key}"
+```
 
-            # Try DM first, fallback to ephemeral
-            try:
-                await interaction.user.send(message)
-                await interaction.response.send_message(
-                    "✅ New API key generated and sent to your DMs!",
-                    ephemeral=True
-                )
-            except discord.Forbidden:
-                await interaction.response.send_message(message, ephemeral=True)
+**Important:**
+• This is your ONLY chance to copy this key
+• Update your Claude Code configuration immediately
+• The old key will no longer work"""
+
+            # Always send as ephemeral (no DM fallback)
+            await interaction.response.send_message(message, ephemeral=True)
 
         except Exception as e:
             logger.error(f"Regenerate error: {e}")
@@ -733,10 +683,11 @@ claude mcp add --transport http discord-mcp-bot {server_url} --header "Authoriza
 **Last Used:** {last_used}
 **Usage Count:** {user.usage_count} requests
 
-**Commands:**
-• `/mykey` - Get your API key
-• `/regenerate` - Generate new API key
-• `/register` - Register (if needed)"""
+**Available Commands:**
+• `/regenerate` - Generate new API key (invalidates old one)
+• `/status` - View this status information
+
+**Note:** API keys are only shown once when created/regenerated for security."""
 
             await interaction.response.send_message(status_msg, ephemeral=True)
 
