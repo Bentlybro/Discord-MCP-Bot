@@ -89,11 +89,11 @@ To connect to a hosted Discord MCP server:
 
 3. **Connect to the MCP server**:
    ```bash
-   claude mcp add --transport http discord-mcp-bot http://server-domain.com:8000/mcp --header "Authorization: Bearer YOUR_API_KEY_FROM_DISCORD_BOT"
+   claude mcp add --transport http discord-mcp-bot http://server-domain.com/mcp --header "Authorization: Bearer YOUR_API_KEY_FROM_DISCORD_BOT"
    ```
 
    Replace:
-   - `server-domain.com:8000` with the actual server URL
+   - `server-domain.com` with the actual server URL
    - `YOUR_API_KEY_FROM_DISCORD_BOT` with the API key you received from the bot
 
 4. **Manage your access**:
