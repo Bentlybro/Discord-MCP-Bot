@@ -24,16 +24,6 @@ class APIRoutes:
                 "status": "running",
                 "bot_ready": self.discord_bot.is_ready(),
                 "guilds": self.discord_bot.guild_count,
-                "features": [
-                    "User registration via Discord slash commands",
-                    "Individual API key authentication per user",
-                    "MCP protocol for AI assistant integration",
-                    "Discord message reading and searching",
-                    "Interactive conversations with Discord users",
-                    "Message sending with user attribution",
-                    "Thread support",
-                    "User listing and discovery"
-                ]
             }
 
         @self.app.get("/health", summary="Health check for monitoring")
