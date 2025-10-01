@@ -132,5 +132,13 @@ class Database:
                 return plaintext_api_key
             return None
 
+    async def get_all_users(self):
+        """Get all registered users"""
+        async with self.async_session() as session:
+            result = await session.execute(
+                select(User).order_by(User.created_at.desc())
+            )
+            return result.scalars().all()
+
 # Global database instance
 db = Database()

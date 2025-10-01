@@ -55,6 +55,10 @@ class DiscordBot:
         async def status_command(interaction: discord.Interaction):
             await self._handle_status(interaction)
 
+        @self.bot.tree.command(name="users", description="List all registered users (admin only)")
+        async def users_command(interaction: discord.Interaction):
+            await self._handle_users(interaction)
+
     def check_channel_access(self, channel_id: int) -> bool:
         """Check if bot has access to a specific channel or thread"""
         channel = self.bot.get_channel(channel_id)
@@ -696,5 +700,61 @@ claude mcp add --transport http discord-mcp-bot {server_url}/mcp --header "Autho
             logger.error(f"Status error: {e}")
             await interaction.response.send_message(
                 "❌ Failed to get status.",
+                ephemeral=True
+            )
+
+    async def _handle_users(self, interaction: discord.Interaction):
+        """Handle /users command - admin only"""
+        try:
+            # Check if user is bot owner or has admin permissions
+            if not interaction.user.guild_permissions.administrator:
+                await interaction.response.send_message(
+                    "❌ This command is only available to administrators.",
+                    ephemeral=True
+                )
+                return
+
+            # Get all users from database
+            users = await db.get_all_users()
+
+            if not users:
+                await interaction.response.send_message(
+                    "No registered users found.",
+                    ephemeral=True
+                )
+                return
+
+            # Build user list message
+            user_lines = []
+            total_requests = 0
+            active_count = 0
+
+            for user in users:
+                status_emoji = "✅" if user.is_active else "❌"
+                last_used = user.last_used.strftime("%Y-%m-%d") if user.last_used else "Never"
+                user_lines.append(
+                    f"{status_emoji} **{user.discord_username}** (ID: {user.discord_user_id})\n"
+                    f"   Created: {user.created_at.strftime('%Y-%m-%d')} | Last Used: {last_used} | Requests: {user.usage_count}"
+                )
+                total_requests += user.usage_count
+                if user.is_active:
+                    active_count += 1
+
+            # Split into chunks if too long (Discord limit is 2000 chars)
+            message = f"""👥 **Registered Users** ({len(users)} total, {active_count} active)
+
+{chr(10).join(user_lines[:20])}
+
+**Total API Requests:** {total_requests}"""
+
+            if len(users) > 20:
+                message += f"\n\n*Showing first 20 of {len(users)} users*"
+
+            await interaction.response.send_message(message, ephemeral=True)
+
+        except Exception as e:
+            logger.error(f"Users command error: {e}")
+            await interaction.response.send_message(
+                "❌ Failed to retrieve user list.",
                 ephemeral=True
             )
