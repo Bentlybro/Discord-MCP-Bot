@@ -9,21 +9,16 @@ from src.api.routes import APIRoutes
 from src.api.middleware import MiddlewareSetup
 from src.config.settings import settings
 
-# Configure logging - only show warnings and errors
+# Configure logging - concise format
 logging.basicConfig(
-    level=logging.WARNING,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s'
 )
 
-# Set specific loggers to WARNING to reduce noise
-logging.getLogger("src.api.routes").setLevel(logging.WARNING)
-logging.getLogger("src.mcp.protocol").setLevel(logging.WARNING)
-logging.getLogger("src.api.middleware").setLevel(logging.WARNING)
+# Reduce noise from uvicorn access logs
 logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
 
-# Keep our main logger at INFO for important startup messages
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
 
 class DiscordMCPServer:
     def __init__(self):
@@ -45,7 +40,8 @@ class DiscordMCPServer:
             self.app,
             host=settings.api_host,
             port=settings.api_port,
-            log_level="warning"  # Reduce uvicorn logging
+            log_level="info",
+            access_log=False  # Disable access logs
         )
         server = uvicorn.Server(config)
         await server.serve()

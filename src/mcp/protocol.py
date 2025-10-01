@@ -9,7 +9,6 @@ class MCPProtocolHandler:
 
     async def handle_request(self, request: Dict[str, Any], requesting_user_id: Optional[str] = None) -> Dict[str, Any]:
         """Handle incoming MCP protocol requests"""
-        logger.info(f"Received MCP request: {request}")
         method = request.get("method")
 
         try:
@@ -52,7 +51,6 @@ class MCPProtocolHandler:
                 }
             }
         }
-        logger.info(f"Sending initialize response: {response}")
         return response
 
     def _handle_tools_list(self, request: Dict[str, Any]) -> Dict[str, Any]:
@@ -172,14 +170,13 @@ class MCPProtocolHandler:
                 ]
             }
         }
-        logger.info(f"Sending tools/list response: {response}")
         return response
 
     async def _handle_tools_call(self, request: Dict[str, Any], requesting_user_id: Optional[str] = None) -> Dict[str, Any]:
         """Handle MCP tools/call request"""
         tool_name = request["params"]["name"]
         args = request["params"]["arguments"]
-        logger.info(f"Tool call: {tool_name} with args: {args}")
+        logger.info(f"Tool call: {tool_name}")
 
         result_data = None
         if tool_name == "get_discord_messages":
@@ -236,5 +233,4 @@ class MCPProtocolHandler:
                 "content": [{"type": "text", "text": str(result_data)}]
             }
         }
-        logger.info(f"Tool response: {response}")
         return response

@@ -77,14 +77,12 @@ class APIRoutes:
         ):
             """Handle MCP protocol requests with user authentication"""
             try:
-                # Validate Origin header for security
-                origin = request.headers.get("origin")
-                if origin:
-                    logger.info(f"MCP request from origin: {origin}")
-
                 # Verify API key
                 user_id = await verify_api_key(credentials)
-                logger.info(f"MCP request from user {user_id}: {mcp_request.get('method', 'unknown')}")
+
+                # Log request concisely
+                method = mcp_request.get('method', 'unknown')
+                logger.info(f"[User {user_id}] {method}")
 
                 # Handle the MCP request
                 response_data = await self.mcp_handler.handle_request(mcp_request, user_id)
