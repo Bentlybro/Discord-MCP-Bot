@@ -11,6 +11,37 @@ from ..utils.discord_url_parser import DiscordURLParser
 
 logger = logging.getLogger(__name__)
 
+
+def format_message(message: discord.Message) -> dict:
+    """Format a Discord message into a consistent dictionary structure"""
+    data = {
+        "id": str(message.id),
+        "author": message.author.display_name,
+        "author_id": str(message.author.id),
+        "content": message.content,
+        "timestamp": message.created_at.isoformat(),
+        "channel_id": str(message.channel.id),
+        "channel_name": message.channel.name,
+        "guild_id": str(message.guild.id),
+        "guild_name": message.guild.name
+    }
+
+    # Add referenced message info if this is a reply
+    if message.reference and message.reference.message_id:
+        data["reply_to_message_id"] = str(message.reference.message_id)
+
+        # Include the referenced message content if available
+        if message.referenced_message:
+            data["referenced_message"] = {
+                "id": str(message.referenced_message.id),
+                "author": message.referenced_message.author.display_name,
+                "author_id": str(message.referenced_message.author.id),
+                "content": message.referenced_message.content,
+                "timestamp": message.referenced_message.created_at.isoformat()
+            }
+
+    return data
+
 class DiscordBot:
     def __init__(self):
         intents = discord.Intents.default()
@@ -105,17 +136,7 @@ class DiscordBot:
                 before = discord.Object(id=int(before_message_id))
 
             async for message in channel.history(limit=limit, before=before):
-                messages.append({
-                    "id": str(message.id),
-                    "author": message.author.display_name,
-                    "author_id": str(message.author.id),
-                    "content": message.content,
-                    "timestamp": message.created_at.isoformat(),
-                    "channel_id": str(message.channel.id),
-                    "channel_name": message.channel.name,
-                    "guild_id": str(message.guild.id),
-                    "guild_name": message.guild.name
-                })
+                messages.append(format_message(message))
 
             return {"messages": messages}
         except Exception as e:
@@ -139,17 +160,7 @@ class DiscordBot:
                     break
 
                 if query.lower() in message.content.lower():
-                    messages.append({
-                        "id": str(message.id),
-                        "author": message.author.display_name,
-                        "author_id": str(message.author.id),
-                        "content": message.content,
-                        "timestamp": message.created_at.isoformat(),
-                        "channel_id": str(message.channel.id),
-                        "channel_name": message.channel.name,
-                        "guild_id": str(message.guild.id),
-                        "guild_name": message.guild.name
-                    })
+                    messages.append(format_message(message))
                     count += 1
 
             return {"messages": messages}
@@ -187,17 +198,7 @@ class DiscordBot:
                             break
 
                         if query.lower() in message.content.lower():
-                            messages.append({
-                                "id": str(message.id),
-                                "author": message.author.display_name,
-                                "author_id": str(message.author.id),
-                                "content": message.content,
-                                "timestamp": message.created_at.isoformat(),
-                                "channel_id": str(message.channel.id),
-                                "channel_name": message.channel.name,
-                                "guild_id": str(message.guild.id),
-                                "guild_name": message.guild.name
-                            })
+                            messages.append(format_message(message))
                             total_found += 1
 
                 except discord.Forbidden:
@@ -244,33 +245,23 @@ class DiscordBot:
             except discord.Forbidden:
                 return {"error": "No permission to read this message"}
 
-            # Return message data
-            message_data = {
-                "id": str(message.id),
-                "author": message.author.display_name,
-                "author_id": str(message.author.id),
-                "content": message.content,
-                "timestamp": message.created_at.isoformat(),
-                "channel_id": str(message.channel.id),
-                "channel_name": message.channel.name,
-                "guild_id": str(message.guild.id),
-                "guild_name": message.guild.name,
-                "url": message.jump_url,
-                "attachments": [
-                    {
-                        "filename": att.filename,
-                        "url": att.url,
-                        "size": att.size
-                    } for att in message.attachments
-                ],
-                "embeds": len(message.embeds),
-                "reactions": [
-                    {
-                        "emoji": str(reaction.emoji),
-                        "count": reaction.count
-                    } for reaction in message.reactions
-                ]
-            }
+            # Return message data (start with base format, then add extras)
+            message_data = format_message(message)
+            message_data["url"] = message.jump_url
+            message_data["attachments"] = [
+                {
+                    "filename": att.filename,
+                    "url": att.url,
+                    "size": att.size
+                } for att in message.attachments
+            ]
+            message_data["embeds"] = len(message.embeds)
+            message_data["reactions"] = [
+                {
+                    "emoji": str(reaction.emoji),
+                    "count": reaction.count
+                } for reaction in message.reactions
+            ]
 
             return {"message": message_data}
 
