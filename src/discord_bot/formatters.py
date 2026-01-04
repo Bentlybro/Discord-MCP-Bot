@@ -23,14 +23,15 @@ def format_message(message: discord.Message) -> dict:
     if message.reference and message.reference.message_id:
         data["reply_to_message_id"] = str(message.reference.message_id)
 
-        # Include the referenced message content if available
-        if message.referenced_message:
+        # Include the referenced message content if available (safely check attribute exists)
+        ref_msg = getattr(message, 'referenced_message', None)
+        if ref_msg is not None:
             data["referenced_message"] = {
-                "id": str(message.referenced_message.id),
-                "author": message.referenced_message.author.display_name,
-                "author_id": str(message.referenced_message.author.id),
-                "content": message.referenced_message.content,
-                "timestamp": message.referenced_message.created_at.isoformat()
+                "id": str(ref_msg.id),
+                "author": ref_msg.author.display_name,
+                "author_id": str(ref_msg.author.id),
+                "content": ref_msg.content,
+                "timestamp": ref_msg.created_at.isoformat()
             }
 
     return data
