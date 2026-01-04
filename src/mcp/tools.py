@@ -4,116 +4,34 @@ Defines all available tools for the MCP protocol.
 """
 
 MCP_TOOLS = [
+    # ========== Reading Messages ==========
     {
         "name": "get_discord_messages",
-        "description": "Fetch recent messages from a Discord channel",
+        "description": "Fetch recent messages from a Discord channel. Returns messages in reverse chronological order (newest first). Use 'before_message_id' for pagination to fetch older messages.",
         "inputSchema": {
             "type": "object",
             "properties": {
                 "channel_id": {"type": "string", "description": "The Discord channel ID"},
-                "limit": {"type": "integer", "description": "Number of messages to fetch (default: 10)"},
-                "before_message_id": {"type": "string", "description": "Fetch messages before this message ID"}
+                "limit": {"type": "integer", "description": "Number of messages to fetch (default: 10, max: 100)"},
+                "before_message_id": {"type": "string", "description": "Fetch messages older than this message ID (for pagination)"}
             },
             "required": ["channel_id"]
         }
     },
     {
-        "name": "search_discord_messages",
-        "description": "Search for messages containing specific text in a channel",
-        "inputSchema": {
-            "type": "object",
-            "properties": {
-                "channel_id": {"type": "string", "description": "The Discord channel ID"},
-                "query": {"type": "string", "description": "Text to search for"},
-                "limit": {"type": "integer", "description": "Max results to return (default: 10)"}
-            },
-            "required": ["channel_id", "query"]
-        }
-    },
-    {
-        "name": "search_guild_messages",
-        "description": "Search for messages containing specific text across all channels in a guild",
-        "inputSchema": {
-            "type": "object",
-            "properties": {
-                "guild_id": {"type": "string", "description": "The Discord guild/server ID"},
-                "query": {"type": "string", "description": "Text to search for"},
-                "limit": {"type": "integer", "description": "Max results to return (default: 50)"}
-            },
-            "required": ["guild_id", "query"]
-        }
-    },
-    {
         "name": "get_message_by_url",
-        "description": "Get a specific Discord message by its URL",
+        "description": "Get a specific Discord message by its URL. Use this when someone shares a Discord message link. Returns full message details including attachments and reactions.",
         "inputSchema": {
             "type": "object",
             "properties": {
-                "message_url": {"type": "string", "description": "Full Discord message URL"}
+                "message_url": {"type": "string", "description": "Full Discord message URL (e.g., https://discord.com/channels/123/456/789)"}
             },
             "required": ["message_url"]
         }
     },
     {
-        "name": "list_discord_channels",
-        "description": "List all accessible Discord channels the bot can read",
-        "inputSchema": {
-            "type": "object",
-            "properties": {}
-        }
-    },
-    {
-        "name": "send_discord_message",
-        "description": "Send a message to a Discord channel",
-        "inputSchema": {
-            "type": "object",
-            "properties": {
-                "channel_id": {"type": "string", "description": "The Discord channel ID"},
-                "content": {"type": "string", "description": "Message content to send"},
-                "reply_to_message_id": {"type": "string", "description": "Message ID to reply to (optional)"}
-            },
-            "required": ["channel_id", "content"]
-        }
-    },
-    {
-        "name": "ask_discord_question",
-        "description": "Send a question to Discord and wait for a reply (interactive conversation)",
-        "inputSchema": {
-            "type": "object",
-            "properties": {
-                "channel_id": {"type": "string", "description": "The Discord channel ID"},
-                "question": {"type": "string", "description": "Question to ask"},
-                "timeout": {"type": "integer", "description": "Seconds to wait for reply (default: 300)"},
-                "target_user_id": {"type": "string", "description": "Only accept replies from this user ID"}
-            },
-            "required": ["channel_id", "question"]
-        }
-    },
-    {
-        "name": "list_guild_users",
-        "description": "List all users in a specific Discord guild",
-        "inputSchema": {
-            "type": "object",
-            "properties": {
-                "guild_id": {"type": "string", "description": "The Discord guild/server ID"},
-                "include_bots": {"type": "boolean", "description": "Include bot accounts (default: false)"}
-            },
-            "required": ["guild_id"]
-        }
-    },
-    {
-        "name": "list_all_users",
-        "description": "List all users across all accessible guilds",
-        "inputSchema": {
-            "type": "object",
-            "properties": {
-                "include_bots": {"type": "boolean", "description": "Include bot accounts (default: false)"}
-            }
-        }
-    },
-    {
         "name": "get_pinned_messages",
-        "description": "Get all pinned messages from a Discord channel",
+        "description": "Get all pinned messages from a channel. Pinned messages often contain important information like rules, links, or key decisions.",
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -124,7 +42,7 @@ MCP_TOOLS = [
     },
     {
         "name": "get_message_context",
-        "description": "Get messages before and after a specific message for context",
+        "description": "Get messages before and after a specific message. Useful for understanding the full conversation around a particular message.",
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -136,14 +54,118 @@ MCP_TOOLS = [
             "required": ["channel_id", "message_id"]
         }
     },
+
+    # ========== Searching ==========
     {
-        "name": "edit_message",
-        "description": "Edit a message that the bot previously sent",
+        "name": "search_discord_messages",
+        "description": "Search for messages containing specific text in a single channel. Case-insensitive. Good for finding discussions about a specific topic.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "channel_id": {"type": "string", "description": "The Discord channel ID to search in"},
+                "query": {"type": "string", "description": "Text to search for (case-insensitive)"},
+                "limit": {"type": "integer", "description": "Max results to return (default: 10)"}
+            },
+            "required": ["channel_id", "query"]
+        }
+    },
+    {
+        "name": "search_guild_messages",
+        "description": "Search for messages across ALL channels in a server. Use this when you don't know which channel contains the information. More comprehensive but slower than single-channel search.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "guild_id": {"type": "string", "description": "The Discord server/guild ID"},
+                "query": {"type": "string", "description": "Text to search for (case-insensitive)"},
+                "limit": {"type": "integer", "description": "Max total results (default: 50)"}
+            },
+            "required": ["guild_id", "query"]
+        }
+    },
+
+    # ========== Channels & Threads ==========
+    {
+        "name": "list_discord_channels",
+        "description": "List all Discord channels and threads the bot can access. Use this first to discover available channels and get their IDs. Only shows channels the bot has read permissions for.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {}
+        }
+    },
+    {
+        "name": "get_channel_info",
+        "description": "Get detailed information about a channel including its topic/description, type, category, and settings. Channel topics often contain important context or links.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "channel_id": {"type": "string", "description": "The Discord channel ID"}
+            },
+            "required": ["channel_id"]
+        }
+    },
+    {
+        "name": "create_thread",
+        "description": "Create a new thread for focused discussion. Can create from an existing message (to discuss that topic) or as a standalone thread in a channel.",
         "inputSchema": {
             "type": "object",
             "properties": {
                 "channel_id": {"type": "string", "description": "The Discord channel ID"},
-                "message_id": {"type": "string", "description": "The message ID to edit"},
+                "name": {"type": "string", "description": "Name for the new thread"},
+                "message_id": {"type": "string", "description": "Create thread from this message (optional - omit for standalone thread)"},
+                "auto_archive_duration": {"type": "integer", "description": "Minutes until auto-archive: 60 (1hr), 1440 (24hr), 4320 (3d), 10080 (7d). Default: 1440"}
+            },
+            "required": ["channel_id", "name"]
+        }
+    },
+
+    # ========== Sending Messages ==========
+    {
+        "name": "send_discord_message",
+        "description": "Send a message to a Discord channel. Supports replying to a specific message. Messages include attribution showing which user's Claude sent it.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "channel_id": {"type": "string", "description": "The Discord channel ID"},
+                "content": {"type": "string", "description": "Message content (supports Discord markdown)"},
+                "reply_to_message_id": {"type": "string", "description": "Message ID to reply to (creates a reply thread)"}
+            },
+            "required": ["channel_id", "content"]
+        }
+    },
+    {
+        "name": "ask_discord_question",
+        "description": "Send a question and wait for a reply. Use this for interactive conversations where you need a response before continuing. Blocks until someone replies or timeout.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "channel_id": {"type": "string", "description": "The Discord channel ID"},
+                "question": {"type": "string", "description": "Question to ask"},
+                "timeout": {"type": "integer", "description": "Seconds to wait for reply (default: 300 = 5 minutes)"},
+                "target_user_id": {"type": "string", "description": "Only accept replies from this specific user"}
+            },
+            "required": ["channel_id", "question"]
+        }
+    },
+    {
+        "name": "dm_user",
+        "description": "Send a direct message to a user. Use for private communication. Will fail if user has DMs disabled. Messages include attribution.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "user_id": {"type": "string", "description": "The Discord user ID to DM"},
+                "content": {"type": "string", "description": "Message content"}
+            },
+            "required": ["user_id", "content"]
+        }
+    },
+    {
+        "name": "edit_message",
+        "description": "Edit a message that this bot previously sent. Cannot edit messages from other users.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "channel_id": {"type": "string", "description": "The Discord channel ID"},
+                "message_id": {"type": "string", "description": "The message ID to edit (must be bot's own message)"},
                 "new_content": {"type": "string", "description": "The new message content"}
             },
             "required": ["channel_id", "message_id", "new_content"]
@@ -151,51 +173,51 @@ MCP_TOOLS = [
     },
     {
         "name": "delete_message",
-        "description": "Delete a message that the bot previously sent",
+        "description": "Delete a message that this bot previously sent. Cannot delete messages from other users. Use for cleanup.",
         "inputSchema": {
             "type": "object",
             "properties": {
                 "channel_id": {"type": "string", "description": "The Discord channel ID"},
-                "message_id": {"type": "string", "description": "The message ID to delete"}
+                "message_id": {"type": "string", "description": "The message ID to delete (must be bot's own message)"}
             },
             "required": ["channel_id", "message_id"]
         }
     },
+
+    # ========== Users ==========
     {
-        "name": "create_thread",
-        "description": "Create a new thread from a message or as a standalone thread in a channel",
+        "name": "list_guild_users",
+        "description": "List all users in a Discord server. Returns usernames, display names, status, and roles. Use to find user IDs for DMs or mentions.",
         "inputSchema": {
             "type": "object",
             "properties": {
-                "channel_id": {"type": "string", "description": "The Discord channel ID"},
-                "name": {"type": "string", "description": "Name for the new thread"},
-                "message_id": {"type": "string", "description": "Message ID to create thread from (optional - if not provided, creates standalone thread)"},
-                "auto_archive_duration": {"type": "integer", "description": "Minutes until auto-archive: 60, 1440, 4320, or 10080 (default: 1440)"}
+                "guild_id": {"type": "string", "description": "The Discord server/guild ID"},
+                "include_bots": {"type": "boolean", "description": "Include bot accounts (default: false)"}
             },
-            "required": ["channel_id", "name"]
+            "required": ["guild_id"]
         }
     },
     {
-        "name": "dm_user",
-        "description": "Send a direct message to a Discord user",
+        "name": "list_all_users",
+        "description": "List all users across all accessible servers. Deduplicates users who are in multiple servers. Good for finding a user when you don't know which server they're in.",
         "inputSchema": {
             "type": "object",
             "properties": {
-                "user_id": {"type": "string", "description": "The Discord user ID to DM"},
-                "content": {"type": "string", "description": "Message content to send"}
-            },
-            "required": ["user_id", "content"]
+                "include_bots": {"type": "boolean", "description": "Include bot accounts (default: false)"}
+            }
         }
     },
+
+    # ========== Attachments ==========
     {
         "name": "download_attachment",
-        "description": "Download an attachment from a Discord message and return its content",
+        "description": "Download a file attachment from a message. Returns text content directly for text/code files, or base64-encoded data for binary files. Max 10MB. Use to read shared code, logs, or config files.",
         "inputSchema": {
             "type": "object",
             "properties": {
                 "channel_id": {"type": "string", "description": "The Discord channel ID"},
                 "message_id": {"type": "string", "description": "The message ID containing the attachment"},
-                "attachment_index": {"type": "integer", "description": "Index of attachment if multiple (default: 0)"}
+                "attachment_index": {"type": "integer", "description": "Which attachment if multiple (0-indexed, default: 0)"}
             },
             "required": ["channel_id", "message_id"]
         }

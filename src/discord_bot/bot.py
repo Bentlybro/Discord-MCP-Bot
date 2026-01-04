@@ -221,6 +221,54 @@ class DiscordBot:
         except Exception as e:
             return {"error": str(e)}
 
+    def get_channel_info(self, channel_id: int) -> dict:
+        """Get detailed information about a channel"""
+        try:
+            if not self.check_channel_access(channel_id):
+                return {"error": "Access denied to this channel"}
+
+            channel = self.bot.get_channel(channel_id)
+            if not channel:
+                return {"error": "Channel not found"}
+
+            # Base info for all channel types
+            info = {
+                "id": str(channel.id),
+                "name": channel.name,
+                "guild_id": str(channel.guild.id),
+                "guild_name": channel.guild.name,
+                "created_at": channel.created_at.isoformat() if channel.created_at else None,
+            }
+
+            # Thread-specific info
+            if isinstance(channel, discord.Thread):
+                info["type"] = "thread"
+                info["parent_id"] = str(channel.parent_id)
+                info["parent_name"] = channel.parent.name if channel.parent else None
+                info["owner_id"] = str(channel.owner_id) if channel.owner_id else None
+                info["message_count"] = channel.message_count
+                info["member_count"] = channel.member_count
+                info["archived"] = channel.archived
+                info["locked"] = channel.locked
+                info["auto_archive_duration"] = channel.auto_archive_duration
+            else:
+                # Text channel info
+                info["type"] = "text"
+                info["topic"] = channel.topic
+                info["category"] = channel.category.name if channel.category else None
+                info["category_id"] = str(channel.category_id) if channel.category_id else None
+                info["position"] = channel.position
+                info["slowmode_delay"] = channel.slowmode_delay
+                info["nsfw"] = channel.nsfw
+                info["is_news"] = channel.is_news()
+
+                # Thread count if available
+                info["thread_count"] = len(channel.threads)
+
+            return {"channel": info}
+        except Exception as e:
+            return {"error": str(e)}
+
     async def send_message(self, channel_id: int, content: str, reply_to_message_id: Optional[str] = None,
                           requesting_user_id: Optional[str] = None, is_question: bool = False) -> dict:
         """Send a message to a Discord channel"""

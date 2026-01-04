@@ -102,6 +102,7 @@ class MCPProtocolHandler:
             "dm_user": self._handle_dm_user,
             # Channels & threads
             "list_discord_channels": self._handle_list_channels,
+            "get_channel_info": self._handle_get_channel_info,
             "create_thread": self._handle_create_thread,
             # Users
             "list_guild_users": self._handle_list_guild_users,
@@ -138,6 +139,9 @@ class MCPProtocolHandler:
 
     async def _handle_list_channels(self, args: dict, user_id: str):
         return self.discord_bot.list_channels()
+
+    async def _handle_get_channel_info(self, args: dict, user_id: str):
+        return self.discord_bot.get_channel_info(int(args["channel_id"]))
 
     async def _handle_send_message(self, args: dict, user_id: str):
         return await self.discord_bot.send_message(
