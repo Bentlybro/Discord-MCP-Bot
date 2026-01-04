@@ -499,6 +499,83 @@ class DiscordBot:
             logger.error(f"Error getting message context: {str(e)}")
             return {"error": str(e)}
 
+    async def get_message_by_id(self, channel_id: int, message_id: str) -> dict:
+        """Get a specific message by its ID"""
+        try:
+            if not self.check_channel_access(channel_id):
+                return {"error": "Access denied to this channel"}
+
+            channel = self.bot.get_channel(channel_id)
+            if not channel:
+                return {"error": "Channel not found"}
+
+            try:
+                message = await channel.fetch_message(int(message_id))
+            except discord.NotFound:
+                return {"error": "Message not found"}
+            except discord.Forbidden:
+                return {"error": "No permission to read this message"}
+
+            return {"message": format_message_full(message)}
+
+        except Exception as e:
+            logger.error(f"Error getting message by ID: {str(e)}")
+            return {"error": str(e)}
+
+    async def trace_reply_chain(self, channel_id: int, message_id: str, max_depth: int = 20) -> dict:
+        """Trace back through a chain of message replies"""
+        try:
+            if not self.check_channel_access(channel_id):
+                return {"error": "Access denied to this channel"}
+
+            channel = self.bot.get_channel(channel_id)
+            if not channel:
+                return {"error": "Channel not found"}
+
+            # Clamp max_depth
+            max_depth = min(max(1, max_depth), 50)
+
+            chain = []
+            current_message_id = int(message_id)
+
+            for _ in range(max_depth):
+                try:
+                    message = await channel.fetch_message(current_message_id)
+                except discord.NotFound:
+                    # If we can't find a message in the chain, stop here
+                    if not chain:
+                        return {"error": "Message not found"}
+                    break
+                except discord.Forbidden:
+                    if not chain:
+                        return {"error": "No permission to read this message"}
+                    break
+
+                # Add to chain
+                chain.append(format_message_full(message))
+
+                # Check if this message is a reply
+                if message.reference and message.reference.message_id:
+                    current_message_id = message.reference.message_id
+                else:
+                    # No more replies to trace
+                    break
+
+            # Reverse so oldest message is first (chronological order)
+            chain.reverse()
+
+            return {
+                "chain": chain,
+                "message_count": len(chain),
+                "channel_id": str(channel_id),
+                "channel_name": channel.name,
+                "complete": len(chain) < max_depth or not (chain and chain[-1].get("reply_to_message_id"))
+            }
+
+        except Exception as e:
+            logger.error(f"Error tracing reply chain: {str(e)}")
+            return {"error": str(e)}
+
     async def edit_message(self, channel_id: int, message_id: str, new_content: str) -> dict:
         """Edit a message that the bot previously sent"""
         try:

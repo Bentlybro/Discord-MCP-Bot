@@ -92,8 +92,10 @@ class MCPProtocolHandler:
             "search_discord_messages": self._handle_search_messages,
             "search_guild_messages": self._handle_search_guild_messages,
             "get_message_by_url": self._handle_get_message_by_url,
+            "get_message_by_id": self._handle_get_message_by_id,
             "get_pinned_messages": self._handle_get_pinned_messages,
             "get_message_context": self._handle_get_message_context,
+            "trace_reply_chain": self._handle_trace_reply_chain,
             # Message actions
             "send_discord_message": self._handle_send_message,
             "ask_discord_question": self._handle_ask_question,
@@ -136,6 +138,19 @@ class MCPProtocolHandler:
 
     async def _handle_get_message_by_url(self, args: dict, user_id: str):
         return await self.discord_bot.get_message_by_url(args["message_url"])
+
+    async def _handle_get_message_by_id(self, args: dict, user_id: str):
+        return await self.discord_bot.get_message_by_id(
+            int(args["channel_id"]),
+            args["message_id"]
+        )
+
+    async def _handle_trace_reply_chain(self, args: dict, user_id: str):
+        return await self.discord_bot.trace_reply_chain(
+            int(args["channel_id"]),
+            args["message_id"],
+            args.get("max_depth", 20)
+        )
 
     async def _handle_list_channels(self, args: dict, user_id: str):
         return self.discord_bot.list_channels()

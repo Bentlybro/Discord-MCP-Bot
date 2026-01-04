@@ -55,6 +55,32 @@ MCP_TOOLS = [
         }
     },
 
+    {
+        "name": "get_message_by_id",
+        "description": "Get a specific message by its ID. Simpler than get_message_by_url when you already have the channel and message IDs. Returns full message details including attachments and reactions.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "channel_id": {"type": "string", "description": "The Discord channel ID"},
+                "message_id": {"type": "string", "description": "The message ID to fetch"}
+            },
+            "required": ["channel_id", "message_id"]
+        }
+    },
+    {
+        "name": "trace_reply_chain",
+        "description": "Trace back through a chain of message replies. Given a message that is a reply, this follows the reply_to references back to build the full conversation thread. Perfect for understanding back-and-forth conversations where people reply to each other with unrelated messages in between.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "channel_id": {"type": "string", "description": "The Discord channel ID"},
+                "message_id": {"type": "string", "description": "The message ID to start tracing from (usually the latest message in a thread)"},
+                "max_depth": {"type": "integer", "description": "Maximum number of replies to trace back (default: 20, max: 50)"}
+            },
+            "required": ["channel_id", "message_id"]
+        }
+    },
+
     # ========== Searching ==========
     {
         "name": "search_discord_messages",
