@@ -87,15 +87,27 @@ class MCPProtocolHandler:
     def _get_tool_handler(self, tool_name: str):
         """Get the handler function for a tool"""
         handlers = {
+            # Message reading
             "get_discord_messages": self._handle_get_messages,
             "search_discord_messages": self._handle_search_messages,
             "search_guild_messages": self._handle_search_guild_messages,
             "get_message_by_url": self._handle_get_message_by_url,
-            "list_discord_channels": self._handle_list_channels,
+            "get_pinned_messages": self._handle_get_pinned_messages,
+            "get_message_context": self._handle_get_message_context,
+            # Message actions
             "send_discord_message": self._handle_send_message,
             "ask_discord_question": self._handle_ask_question,
+            "edit_message": self._handle_edit_message,
+            "delete_message": self._handle_delete_message,
+            "dm_user": self._handle_dm_user,
+            # Channels & threads
+            "list_discord_channels": self._handle_list_channels,
+            "create_thread": self._handle_create_thread,
+            # Users
             "list_guild_users": self._handle_list_guild_users,
             "list_all_users": self._handle_list_all_users,
+            # Attachments
+            "download_attachment": self._handle_download_attachment,
         }
         return handlers.get(tool_name)
 
@@ -153,4 +165,52 @@ class MCPProtocolHandler:
     async def _handle_list_all_users(self, args: dict, user_id: str):
         return await self.discord_bot.list_all_accessible_users(
             args.get("include_bots", False)
+        )
+
+    async def _handle_get_pinned_messages(self, args: dict, user_id: str):
+        return await self.discord_bot.get_pinned_messages(
+            int(args["channel_id"])
+        )
+
+    async def _handle_get_message_context(self, args: dict, user_id: str):
+        return await self.discord_bot.get_message_context(
+            int(args["channel_id"]),
+            args["message_id"],
+            args.get("before_count", 5),
+            args.get("after_count", 5)
+        )
+
+    async def _handle_edit_message(self, args: dict, user_id: str):
+        return await self.discord_bot.edit_message(
+            int(args["channel_id"]),
+            args["message_id"],
+            args["new_content"]
+        )
+
+    async def _handle_delete_message(self, args: dict, user_id: str):
+        return await self.discord_bot.delete_message(
+            int(args["channel_id"]),
+            args["message_id"]
+        )
+
+    async def _handle_create_thread(self, args: dict, user_id: str):
+        return await self.discord_bot.create_thread(
+            int(args["channel_id"]),
+            args["name"],
+            args.get("message_id"),
+            args.get("auto_archive_duration", 1440)
+        )
+
+    async def _handle_dm_user(self, args: dict, user_id: str):
+        return await self.discord_bot.dm_user(
+            args["user_id"],
+            args["content"],
+            user_id
+        )
+
+    async def _handle_download_attachment(self, args: dict, user_id: str):
+        return await self.discord_bot.download_attachment(
+            int(args["channel_id"]),
+            args["message_id"],
+            args.get("attachment_index", 0)
         )

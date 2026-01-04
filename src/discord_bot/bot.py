@@ -5,6 +5,8 @@ Handles Discord API operations for messages, channels, and users.
 import discord
 import logging
 import asyncio
+import aiohttp
+import base64
 from discord.ext import commands
 from typing import Optional
 
@@ -384,6 +386,289 @@ class DiscordBot:
 
         except Exception as e:
             logger.error(f"Error listing all users: {str(e)}")
+            return {"error": str(e)}
+
+    async def get_pinned_messages(self, channel_id: int) -> dict:
+        """Get all pinned messages from a channel"""
+        try:
+            if not self.check_channel_access(channel_id):
+                return {"error": "Access denied to this channel"}
+
+            channel = self.bot.get_channel(channel_id)
+            if not channel:
+                return {"error": "Channel not found"}
+
+            pinned = await channel.pins()
+            messages = [format_message_full(msg) for msg in pinned]
+
+            return {
+                "channel_id": str(channel_id),
+                "channel_name": channel.name,
+                "pinned_count": len(messages),
+                "messages": messages
+            }
+        except Exception as e:
+            logger.error(f"Error getting pinned messages: {str(e)}")
+            return {"error": str(e)}
+
+    async def get_message_context(self, channel_id: int, message_id: str,
+                                  before_count: int = 5, after_count: int = 5) -> dict:
+        """Get messages before and after a specific message for context"""
+        try:
+            if not self.check_channel_access(channel_id):
+                return {"error": "Access denied to this channel"}
+
+            channel = self.bot.get_channel(channel_id)
+            if not channel:
+                return {"error": "Channel not found"}
+
+            # Fetch the target message
+            try:
+                target_message = await channel.fetch_message(int(message_id))
+            except discord.NotFound:
+                return {"error": "Message not found"}
+
+            # Get messages before
+            before_messages = []
+            async for msg in channel.history(limit=before_count, before=target_message):
+                before_messages.append(format_message(msg))
+            before_messages.reverse()  # Chronological order
+
+            # Get messages after
+            after_messages = []
+            async for msg in channel.history(limit=after_count, after=target_message):
+                after_messages.append(format_message(msg))
+            after_messages.reverse()  # Chronological order
+
+            return {
+                "before": before_messages,
+                "target": format_message_full(target_message),
+                "after": after_messages,
+                "channel_id": str(channel_id),
+                "channel_name": channel.name
+            }
+        except Exception as e:
+            logger.error(f"Error getting message context: {str(e)}")
+            return {"error": str(e)}
+
+    async def edit_message(self, channel_id: int, message_id: str, new_content: str) -> dict:
+        """Edit a message that the bot previously sent"""
+        try:
+            if not self.check_channel_access(channel_id):
+                return {"error": "Access denied to this channel"}
+
+            channel = self.bot.get_channel(channel_id)
+            if not channel:
+                return {"error": "Channel not found"}
+
+            try:
+                message = await channel.fetch_message(int(message_id))
+            except discord.NotFound:
+                return {"error": "Message not found"}
+
+            # Check if the message was sent by the bot
+            if message.author.id != self.bot.user.id:
+                return {"error": "Can only edit messages sent by this bot"}
+
+            edited_message = await message.edit(content=new_content)
+
+            return {
+                "success": True,
+                "message": format_message(edited_message)
+            }
+        except discord.Forbidden:
+            return {"error": "No permission to edit this message"}
+        except Exception as e:
+            logger.error(f"Error editing message: {str(e)}")
+            return {"error": str(e)}
+
+    async def delete_message(self, channel_id: int, message_id: str) -> dict:
+        """Delete a message that the bot previously sent"""
+        try:
+            if not self.check_channel_access(channel_id):
+                return {"error": "Access denied to this channel"}
+
+            channel = self.bot.get_channel(channel_id)
+            if not channel:
+                return {"error": "Channel not found"}
+
+            try:
+                message = await channel.fetch_message(int(message_id))
+            except discord.NotFound:
+                return {"error": "Message not found"}
+
+            # Check if the message was sent by the bot
+            if message.author.id != self.bot.user.id:
+                return {"error": "Can only delete messages sent by this bot"}
+
+            await message.delete()
+
+            return {
+                "success": True,
+                "deleted_message_id": message_id
+            }
+        except discord.Forbidden:
+            return {"error": "No permission to delete this message"}
+        except Exception as e:
+            logger.error(f"Error deleting message: {str(e)}")
+            return {"error": str(e)}
+
+    async def create_thread(self, channel_id: int, name: str, message_id: Optional[str] = None,
+                           auto_archive_duration: int = 1440) -> dict:
+        """Create a new thread from a message or as a standalone thread"""
+        try:
+            if not self.check_channel_access(channel_id):
+                return {"error": "Access denied to this channel"}
+
+            channel = self.bot.get_channel(channel_id)
+            if not channel:
+                return {"error": "Channel not found"}
+
+            # Validate auto_archive_duration
+            valid_durations = [60, 1440, 4320, 10080]
+            if auto_archive_duration not in valid_durations:
+                auto_archive_duration = 1440  # Default to 24 hours
+
+            if message_id:
+                # Create thread from a message
+                try:
+                    message = await channel.fetch_message(int(message_id))
+                    thread = await message.create_thread(
+                        name=name,
+                        auto_archive_duration=auto_archive_duration
+                    )
+                except discord.NotFound:
+                    return {"error": "Message not found"}
+            else:
+                # Create standalone thread
+                thread = await channel.create_thread(
+                    name=name,
+                    auto_archive_duration=auto_archive_duration,
+                    type=discord.ChannelType.public_thread
+                )
+
+            return {
+                "success": True,
+                "thread": format_thread(thread)
+            }
+        except discord.Forbidden:
+            return {"error": "No permission to create threads in this channel"}
+        except Exception as e:
+            logger.error(f"Error creating thread: {str(e)}")
+            return {"error": str(e)}
+
+    async def dm_user(self, user_id: str, content: str, requesting_user_id: Optional[str] = None) -> dict:
+        """Send a direct message to a user"""
+        try:
+            user = self.bot.get_user(int(user_id))
+            if not user:
+                # Try to fetch the user if not in cache
+                try:
+                    user = await self.bot.fetch_user(int(user_id))
+                except discord.NotFound:
+                    return {"error": "User not found"}
+
+            # Add attribution if we have a requesting user
+            final_content = content
+            if requesting_user_id:
+                try:
+                    requesting_user = self.bot.get_user(int(requesting_user_id))
+                    if requesting_user:
+                        attribution = f"\n\n*— Sent by {requesting_user.display_name}'s Claude*"
+                    else:
+                        attribution = f"\n\n*— Sent by <@{requesting_user_id}>'s Claude*"
+                    final_content = f"{content}{attribution}"
+                except Exception as e:
+                    logger.warning(f"Failed to add attribution: {e}")
+
+            # Create DM channel and send
+            dm_channel = await user.create_dm()
+            sent_message = await dm_channel.send(final_content)
+
+            return {
+                "success": True,
+                "message": {
+                    "id": str(sent_message.id),
+                    "content": sent_message.content,
+                    "timestamp": sent_message.created_at.isoformat(),
+                    "recipient": {
+                        "id": str(user.id),
+                        "username": user.name,
+                        "display_name": user.display_name
+                    }
+                }
+            }
+        except discord.Forbidden:
+            return {"error": "Cannot send DM to this user (they may have DMs disabled)"}
+        except Exception as e:
+            logger.error(f"Error sending DM: {str(e)}")
+            return {"error": str(e)}
+
+    async def download_attachment(self, channel_id: int, message_id: str,
+                                  attachment_index: int = 0) -> dict:
+        """Download an attachment from a message"""
+        try:
+            if not self.check_channel_access(channel_id):
+                return {"error": "Access denied to this channel"}
+
+            channel = self.bot.get_channel(channel_id)
+            if not channel:
+                return {"error": "Channel not found"}
+
+            try:
+                message = await channel.fetch_message(int(message_id))
+            except discord.NotFound:
+                return {"error": "Message not found"}
+
+            if not message.attachments:
+                return {"error": "Message has no attachments"}
+
+            if attachment_index >= len(message.attachments):
+                return {"error": f"Attachment index {attachment_index} out of range (message has {len(message.attachments)} attachments)"}
+
+            attachment = message.attachments[attachment_index]
+
+            # Check file size (limit to 10MB to avoid memory issues)
+            if attachment.size > 10 * 1024 * 1024:
+                return {"error": "Attachment too large (max 10MB)"}
+
+            # Download the attachment
+            async with aiohttp.ClientSession() as session:
+                async with session.get(attachment.url) as response:
+                    if response.status != 200:
+                        return {"error": f"Failed to download attachment: HTTP {response.status}"}
+
+                    content = await response.read()
+
+            # Determine if it's text or binary
+            is_text = attachment.content_type and attachment.content_type.startswith(('text/', 'application/json', 'application/xml'))
+
+            if is_text:
+                try:
+                    text_content = content.decode('utf-8')
+                    return {
+                        "success": True,
+                        "filename": attachment.filename,
+                        "content_type": attachment.content_type,
+                        "size": attachment.size,
+                        "is_text": True,
+                        "content": text_content
+                    }
+                except UnicodeDecodeError:
+                    is_text = False
+
+            # For binary files, return base64 encoded
+            return {
+                "success": True,
+                "filename": attachment.filename,
+                "content_type": attachment.content_type,
+                "size": attachment.size,
+                "is_text": False,
+                "content_base64": base64.b64encode(content).decode('ascii')
+            }
+
+        except Exception as e:
+            logger.error(f"Error downloading attachment: {str(e)}")
             return {"error": str(e)}
 
     async def start(self):

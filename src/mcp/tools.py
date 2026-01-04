@@ -110,6 +110,95 @@ MCP_TOOLS = [
                 "include_bots": {"type": "boolean", "description": "Include bot accounts (default: false)"}
             }
         }
+    },
+    {
+        "name": "get_pinned_messages",
+        "description": "Get all pinned messages from a Discord channel",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "channel_id": {"type": "string", "description": "The Discord channel ID"}
+            },
+            "required": ["channel_id"]
+        }
+    },
+    {
+        "name": "get_message_context",
+        "description": "Get messages before and after a specific message for context",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "channel_id": {"type": "string", "description": "The Discord channel ID"},
+                "message_id": {"type": "string", "description": "The message ID to get context around"},
+                "before_count": {"type": "integer", "description": "Number of messages before (default: 5)"},
+                "after_count": {"type": "integer", "description": "Number of messages after (default: 5)"}
+            },
+            "required": ["channel_id", "message_id"]
+        }
+    },
+    {
+        "name": "edit_message",
+        "description": "Edit a message that the bot previously sent",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "channel_id": {"type": "string", "description": "The Discord channel ID"},
+                "message_id": {"type": "string", "description": "The message ID to edit"},
+                "new_content": {"type": "string", "description": "The new message content"}
+            },
+            "required": ["channel_id", "message_id", "new_content"]
+        }
+    },
+    {
+        "name": "delete_message",
+        "description": "Delete a message that the bot previously sent",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "channel_id": {"type": "string", "description": "The Discord channel ID"},
+                "message_id": {"type": "string", "description": "The message ID to delete"}
+            },
+            "required": ["channel_id", "message_id"]
+        }
+    },
+    {
+        "name": "create_thread",
+        "description": "Create a new thread from a message or as a standalone thread in a channel",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "channel_id": {"type": "string", "description": "The Discord channel ID"},
+                "name": {"type": "string", "description": "Name for the new thread"},
+                "message_id": {"type": "string", "description": "Message ID to create thread from (optional - if not provided, creates standalone thread)"},
+                "auto_archive_duration": {"type": "integer", "description": "Minutes until auto-archive: 60, 1440, 4320, or 10080 (default: 1440)"}
+            },
+            "required": ["channel_id", "name"]
+        }
+    },
+    {
+        "name": "dm_user",
+        "description": "Send a direct message to a Discord user",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "user_id": {"type": "string", "description": "The Discord user ID to DM"},
+                "content": {"type": "string", "description": "Message content to send"}
+            },
+            "required": ["user_id", "content"]
+        }
+    },
+    {
+        "name": "download_attachment",
+        "description": "Download an attachment from a Discord message and return its content",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "channel_id": {"type": "string", "description": "The Discord channel ID"},
+                "message_id": {"type": "string", "description": "The message ID containing the attachment"},
+                "attachment_index": {"type": "integer", "description": "Index of attachment if multiple (default: 0)"}
+            },
+            "required": ["channel_id", "message_id"]
+        }
     }
 ]
 
