@@ -1,12 +1,88 @@
-from sqlalchemy import Column, String, DateTime, Boolean, Integer, Text
+from sqlalchemy import Column, String, DateTime, Boolean, Integer, Text, ForeignKey
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.sql import func
-from datetime import datetime
+from datetime import datetime, timedelta
 import secrets
 import string
 import hashlib
 
 Base = declarative_base()
+
+
+class OAuthClient(Base):
+    """Registered OAuth clients (Claude Code, Claude Desktop, etc.)"""
+    __tablename__ = "oauth_clients"
+
+    id = Column(Integer, primary_key=True)
+    client_id = Column(String(64), unique=True, nullable=False, index=True)
+    client_name = Column(String(100), nullable=True)
+    redirect_uris = Column(Text, nullable=True)  # JSON array of redirect URIs
+    created_at = Column(DateTime, default=func.now())
+
+    @staticmethod
+    def generate_client_id() -> str:
+        """Generate a unique client ID"""
+        return secrets.token_urlsafe(32)
+
+
+class AuthorizationCode(Base):
+    """OAuth authorization codes (short-lived, single use)"""
+    __tablename__ = "authorization_codes"
+
+    id = Column(Integer, primary_key=True)
+    code = Column(String(64), unique=True, nullable=False, index=True)
+    code_hash = Column(String(64), unique=True, nullable=False)  # SHA256 of code
+    client_id = Column(String(64), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    redirect_uri = Column(String(500), nullable=True)
+    code_challenge = Column(String(128), nullable=True)  # PKCE
+    code_challenge_method = Column(String(10), nullable=True)  # S256 or plain
+    scope = Column(String(500), nullable=True)
+    expires_at = Column(DateTime, nullable=False)
+    used = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=func.now())
+
+    @staticmethod
+    def generate_code() -> str:
+        """Generate a secure authorization code"""
+        return secrets.token_urlsafe(32)
+
+    @staticmethod
+    def hash_code(code: str) -> str:
+        """Hash authorization code"""
+        return hashlib.sha256(code.encode()).hexdigest()
+
+    def is_expired(self) -> bool:
+        return datetime.utcnow() > self.expires_at
+
+
+class OAuthToken(Base):
+    """OAuth access tokens"""
+    __tablename__ = "oauth_tokens"
+
+    id = Column(Integer, primary_key=True)
+    access_token_hash = Column(String(64), unique=True, nullable=False, index=True)
+    refresh_token_hash = Column(String(64), unique=True, nullable=True, index=True)
+    client_id = Column(String(64), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    scope = Column(String(500), nullable=True)
+    expires_at = Column(DateTime, nullable=False)
+    refresh_expires_at = Column(DateTime, nullable=True)
+    revoked = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=func.now())
+
+    @staticmethod
+    def generate_token() -> str:
+        """Generate a secure token"""
+        return secrets.token_urlsafe(32)
+
+    @staticmethod
+    def hash_token(token: str) -> str:
+        """Hash a token"""
+        return hashlib.sha256(token.encode()).hexdigest()
+
+    def is_expired(self) -> bool:
+        return datetime.utcnow() > self.expires_at
 
 class User(Base):
     __tablename__ = "users"

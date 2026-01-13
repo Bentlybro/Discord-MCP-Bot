@@ -1,12 +1,15 @@
 import asyncio
 import logging
+from pathlib import Path
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
 import uvicorn
 
 from src.discord_bot.bot import DiscordBot
 from src.mcp.protocol import MCPProtocolHandler
 from src.api.routes import APIRoutes
 from src.api.middleware import MiddlewareSetup
+from src.api.oauth import router as oauth_router
 from src.config.settings import settings
 
 # Configure logging - concise format
@@ -20,6 +23,7 @@ logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
 
 logger = logging.getLogger(__name__)
 
+
 class DiscordMCPServer:
     def __init__(self):
         self.app = FastAPI(title="Discord MCP Server", version="1.0.0")
@@ -29,6 +33,14 @@ class DiscordMCPServer:
         # Setup middleware and routes
         self.middleware_setup = MiddlewareSetup(self.app)
         self.api_routes = APIRoutes(self.app, self.discord_bot, self.mcp_handler)
+
+        # Register OAuth routes
+        self.app.include_router(oauth_router)
+
+        # Mount static files for OAuth pages
+        static_dir = Path(__file__).parent / "src" / "static"
+        if static_dir.exists():
+            self.app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
 
     async def run_discord_bot(self):
         """Run the Discord bot"""

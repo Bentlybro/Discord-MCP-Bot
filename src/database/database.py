@@ -1,14 +1,19 @@
 import asyncio
+import json
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy import select
-from typing import Optional
+from typing import Optional, List, Dict, Any
+from datetime import datetime, timezone
 import logging
 import os
 
-from .models import Base, User
+from .models import Base, User, OAuthClient, AuthorizationCode, OAuthToken
 
 logger = logging.getLogger(__name__)
+
+# In-memory store for pending OAuth authorizations (short-lived)
+_pending_auths: Dict[str, Dict[str, Any]] = {}
 
 class Database:
     def __init__(self, database_url: str = "sqlite+aiosqlite:///db/discord_mcp.db"):
@@ -139,6 +144,232 @@ class Database:
                 select(User).order_by(User.created_at.desc())
             )
             return result.scalars().all()
+
+    # =========================================================================
+    # OAuth Client Methods
+    # =========================================================================
+
+    async def create_oauth_client(
+        self,
+        client_id: str,
+        client_name: str,
+        redirect_uris: List[str]
+    ) -> OAuthClient:
+        """Create a new OAuth client"""
+        async with self.async_session() as session:
+            client = OAuthClient(
+                client_id=client_id,
+                client_name=client_name,
+                redirect_uris=json.dumps(redirect_uris)
+            )
+            session.add(client)
+            await session.commit()
+            await session.refresh(client)
+            logger.info(f"Created OAuth client: {client_name}")
+            return client
+
+    async def get_oauth_client(self, client_id: str) -> Optional[OAuthClient]:
+        """Get OAuth client by client_id"""
+        async with self.async_session() as session:
+            result = await session.execute(
+                select(OAuthClient).where(OAuthClient.client_id == client_id)
+            )
+            return result.scalar_one_or_none()
+
+    # =========================================================================
+    # Pending Auth Methods (in-memory for Discord OAuth flow)
+    # =========================================================================
+
+    async def store_pending_auth(
+        self,
+        auth_state: str,
+        client_id: str,
+        redirect_uri: Optional[str],
+        scope: Optional[str],
+        code_challenge: Optional[str],
+        code_challenge_method: Optional[str],
+        original_state: Optional[str]
+    ):
+        """Store pending authorization request"""
+        _pending_auths[auth_state] = {
+            "client_id": client_id,
+            "redirect_uri": redirect_uri,
+            "scope": scope,
+            "code_challenge": code_challenge,
+            "code_challenge_method": code_challenge_method,
+            "original_state": original_state,
+            "created_at": datetime.now(timezone.utc)
+        }
+
+    async def get_pending_auth(self, auth_state: str) -> Optional[Dict[str, Any]]:
+        """Get pending authorization request"""
+        return _pending_auths.get(auth_state)
+
+    async def delete_pending_auth(self, auth_state: str):
+        """Delete pending authorization request"""
+        _pending_auths.pop(auth_state, None)
+
+    # =========================================================================
+    # Authorization Code Methods
+    # =========================================================================
+
+    async def create_authorization_code(
+        self,
+        code: str,
+        client_id: str,
+        user_id: int,
+        redirect_uri: Optional[str],
+        code_challenge: Optional[str],
+        code_challenge_method: Optional[str],
+        scope: Optional[str],
+        expires_at: datetime
+    ) -> AuthorizationCode:
+        """Create a new authorization code"""
+        async with self.async_session() as session:
+            auth_code = AuthorizationCode(
+                code=code,
+                code_hash=AuthorizationCode.hash_code(code),
+                client_id=client_id,
+                user_id=user_id,
+                redirect_uri=redirect_uri,
+                code_challenge=code_challenge,
+                code_challenge_method=code_challenge_method,
+                scope=scope,
+                expires_at=expires_at
+            )
+            session.add(auth_code)
+            await session.commit()
+            await session.refresh(auth_code)
+            return auth_code
+
+    async def get_authorization_code(self, code: str) -> Optional[AuthorizationCode]:
+        """Get authorization code by plaintext code"""
+        async with self.async_session() as session:
+            code_hash = AuthorizationCode.hash_code(code)
+            result = await session.execute(
+                select(AuthorizationCode).where(
+                    AuthorizationCode.code_hash == code_hash
+                )
+            )
+            return result.scalar_one_or_none()
+
+    async def mark_authorization_code_used(self, code: str):
+        """Mark an authorization code as used"""
+        async with self.async_session() as session:
+            code_hash = AuthorizationCode.hash_code(code)
+            result = await session.execute(
+                select(AuthorizationCode).where(
+                    AuthorizationCode.code_hash == code_hash
+                )
+            )
+            auth_code = result.scalar_one_or_none()
+            if auth_code:
+                auth_code.used = True
+                await session.commit()
+
+    # =========================================================================
+    # OAuth Token Methods
+    # =========================================================================
+
+    async def create_oauth_token(
+        self,
+        access_token: str,
+        refresh_token: str,
+        client_id: str,
+        user_id: int,
+        scope: Optional[str],
+        expires_at: datetime,
+        refresh_expires_at: datetime
+    ) -> OAuthToken:
+        """Create a new OAuth token"""
+        async with self.async_session() as session:
+            token = OAuthToken(
+                access_token_hash=OAuthToken.hash_token(access_token),
+                refresh_token_hash=OAuthToken.hash_token(refresh_token),
+                client_id=client_id,
+                user_id=user_id,
+                scope=scope,
+                expires_at=expires_at,
+                refresh_expires_at=refresh_expires_at
+            )
+            session.add(token)
+            await session.commit()
+            await session.refresh(token)
+            return token
+
+    async def get_token_by_access_token(self, access_token: str) -> Optional[OAuthToken]:
+        """Get token record by access token"""
+        async with self.async_session() as session:
+            token_hash = OAuthToken.hash_token(access_token)
+            result = await session.execute(
+                select(OAuthToken).where(
+                    OAuthToken.access_token_hash == token_hash,
+                    OAuthToken.revoked == False
+                )
+            )
+            return result.scalar_one_or_none()
+
+    async def get_token_by_refresh_token(self, refresh_token: str) -> Optional[OAuthToken]:
+        """Get token record by refresh token"""
+        async with self.async_session() as session:
+            token_hash = OAuthToken.hash_token(refresh_token)
+            result = await session.execute(
+                select(OAuthToken).where(
+                    OAuthToken.refresh_token_hash == token_hash,
+                    OAuthToken.revoked == False
+                )
+            )
+            return result.scalar_one_or_none()
+
+    async def get_user_by_token(self, access_token: str) -> Optional[User]:
+        """Get user associated with an OAuth access token"""
+        token_record = await self.get_token_by_access_token(access_token)
+        if not token_record:
+            return None
+
+        if token_record.is_expired() or token_record.revoked:
+            return None
+
+        async with self.async_session() as session:
+            result = await session.execute(
+                select(User).where(User.id == token_record.user_id)
+            )
+            return result.scalar_one_or_none()
+
+    async def revoke_token(self, token_id: int):
+        """Revoke a token by ID"""
+        async with self.async_session() as session:
+            result = await session.execute(
+                select(OAuthToken).where(OAuthToken.id == token_id)
+            )
+            token = result.scalar_one_or_none()
+            if token:
+                token.revoked = True
+                await session.commit()
+
+    async def revoke_token_by_value(self, token: str) -> bool:
+        """Revoke a token by its value (access or refresh)"""
+        token_hash = OAuthToken.hash_token(token)
+        async with self.async_session() as session:
+            # Try access token
+            result = await session.execute(
+                select(OAuthToken).where(OAuthToken.access_token_hash == token_hash)
+            )
+            token_record = result.scalar_one_or_none()
+
+            if not token_record:
+                # Try refresh token
+                result = await session.execute(
+                    select(OAuthToken).where(OAuthToken.refresh_token_hash == token_hash)
+                )
+                token_record = result.scalar_one_or_none()
+
+            if token_record:
+                token_record.revoked = True
+                await session.commit()
+                return True
+            return False
+
 
 # Global database instance
 db = Database()

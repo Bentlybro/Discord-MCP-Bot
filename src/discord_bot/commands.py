@@ -19,9 +19,9 @@ def setup_commands(bot: commands.Bot):
     async def register_command(interaction: discord.Interaction):
         await handle_register(interaction)
 
-    @bot.tree.command(name="regenerate", description="Regenerate your API key")
-    async def regenerate_command(interaction: discord.Interaction):
-        await handle_regenerate(interaction)
+    @bot.tree.command(name="apikey", description="Get or regenerate your API key")
+    async def apikey_command(interaction: discord.Interaction):
+        await handle_apikey(interaction)
 
     @bot.tree.command(name="status", description="Check your account status")
     async def status_command(interaction: discord.Interaction):
@@ -41,8 +41,17 @@ async def handle_register(interaction: discord.Interaction):
         # Check if user already exists
         existing_user = await db.get_user_by_discord_id(user_id)
         if existing_user:
+            server_url = settings.public_domain
             await interaction.response.send_message(
-                "✅ You're already registered! If you lost your API key, use `/regenerate` to create a new one.",
+                f"""✅ **You're already registered!**
+
+**To connect with Claude Code or Claude Desktop:**
+```bash
+claude mcp add discord-mcp-bot {server_url}/mcp
+```
+Then select "Authenticate" when prompted - you'll log in with Discord.
+
+Use `/apikey` if you need an API key for manual authentication.""",
                 ephemeral=True
             )
             return
@@ -55,17 +64,22 @@ async def handle_register(interaction: discord.Interaction):
 
         instructions = f"""🎉 **Registration Successful!**
 
-**Your API Key:** ||`{plaintext_api_key}`||
-⚠️ **SAVE THIS NOW! You won't be able to see it again.**
-
 **To connect with Claude Code:**
+```bash
+claude mcp add discord-mcp-bot {server_url}/mcp
+```
+Then select **"Authenticate"** - you'll log in with Discord automatically!
+
+**To connect with Claude Desktop:**
+Settings → Connectors → Add custom connector → `{server_url}/mcp`
+
+---
+**Backup method (if OAuth doesn't work):**
+||`{plaintext_api_key}`||
 ```bash
 claude mcp add --transport http discord-mcp-bot {server_url}/mcp --header "Authorization: Bearer {plaintext_api_key}"
 ```
-
-**Available Commands:**
-• `/regenerate` - Generate a new API key (if you lose this one)
-• `/status` - Check your account status and usage"""
+*Save this now - you won't see it again! Use `/apikey` to generate a new one.*"""
 
         await interaction.response.send_message(instructions, ephemeral=True)
 
@@ -77,43 +91,49 @@ claude mcp add --transport http discord-mcp-bot {server_url}/mcp --header "Autho
         )
 
 
-async def handle_regenerate(interaction: discord.Interaction):
-    """Handle /regenerate command"""
+async def handle_apikey(interaction: discord.Interaction):
+    """Handle /apikey command - generate or regenerate API key"""
     try:
-        new_key = await db.regenerate_api_key(str(interaction.user.id))
-        if not new_key:
+        user_id = str(interaction.user.id)
+        server_url = settings.public_domain
+
+        # Check if user exists
+        existing_user = await db.get_user_by_discord_id(user_id)
+        if not existing_user:
             await interaction.response.send_message(
                 "❌ You're not registered yet. Use `/register` first.",
                 ephemeral=True
             )
             return
 
-        server_url = settings.public_domain
+        # Regenerate their key
+        new_key = await db.regenerate_api_key(user_id)
 
-        message = f"""🔄 **New API Key Generated!**
+        message = f"""🔑 **API Key Generated!**
 
-**Your New API Key:** ||`{new_key}`||
-⚠️ **SAVE THIS NOW! You won't be able to see it again.**
+**Your API Key:** ||`{new_key}`||
+⚠️ Save this now - you won't see it again!
 
-**Your old key is now INVALID!**
-
-**Updated Connection Command:**
+**When to use this:**
+API keys are a backup for when OAuth doesn't work. The recommended way is:
 ```bash
-claude mcp remove discord-mcp-bot
+claude mcp add discord-mcp-bot {server_url}/mcp
+```
+Then authenticate with Discord when prompted.
+
+**If you need the API key method:**
+```bash
 claude mcp add --transport http discord-mcp-bot {server_url}/mcp --header "Authorization: Bearer {new_key}"
 ```
 
-**Important:**
-• This is your ONLY chance to copy this key
-• Update your Claude Code configuration immediately
-• The old key will no longer work"""
+*Note: Any previous API key is now invalid.*"""
 
         await interaction.response.send_message(message, ephemeral=True)
 
     except Exception as e:
-        logger.error(f"Regenerate error: {e}")
+        logger.error(f"API key error: {e}")
         await interaction.response.send_message(
-            "❌ Failed to regenerate API key.",
+            "❌ Failed to generate API key.",
             ephemeral=True
         )
 
@@ -132,6 +152,7 @@ async def handle_status(interaction: discord.Interaction):
         status_emoji = "✅" if user.is_active else "❌"
         last_used = user.last_used.strftime("%Y-%m-%d %H:%M UTC") if user.last_used else "Never"
 
+        server_url = settings.public_domain
         status_msg = f"""📊 **Account Status**
 
 **Status:** {status_emoji} {"Active" if user.is_active else "Inactive"}
@@ -140,11 +161,14 @@ async def handle_status(interaction: discord.Interaction):
 **Last Used:** {last_used}
 **Usage Count:** {user.usage_count} requests
 
-**Available Commands:**
-• `/regenerate` - Generate new API key (invalidates old one)
-• `/status` - View this status information
+**Connect to Claude:**
+```bash
+claude mcp add discord-mcp-bot {server_url}/mcp
+```
 
-**Note:** API keys are only shown once when created/regenerated for security."""
+**Commands:**
+• `/apikey` - Get an API key (backup auth method)
+• `/status` - View this status"""
 
         await interaction.response.send_message(status_msg, ephemeral=True)
 

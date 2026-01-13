@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Authorization Successful</title>
+    <link rel="stylesheet" href="/static/css/auth.css">
+</head>
+<body>
+    <div class="container success-container">
+        {% if username %}
+        <h1>Welcome, {{ username }}!</h1>
+        {% else %}
+        <h1>Authorization Successful</h1>
+        {% endif %}
+        <p>Copy this code back to your application:</p>
+        <code class="auth-code" id="auth-code">{{ code }}</code>
+        <br>
+        <button class="copy-btn" onclick="copyCode()">Copy Code</button>
+    </div>
+
+    <script>
+        function copyCode() {
+            const code = document.getElementById('auth-code').textContent;
+            navigator.clipboard.writeText(code).then(() => {
+                const btn = document.querySelector('.copy-btn');
+                btn.textContent = 'Copied!';
+                setTimeout(() => {
+                    btn.textContent = 'Copy Code';
+                }, 2000);
+            });
+        }
+    </script>
+</body>
+</html>
