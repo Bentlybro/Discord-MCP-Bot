@@ -13,7 +13,7 @@ from typing import Optional
 from ..config.settings import settings
 from ..database.database import db
 from ..utils.discord_url_parser import DiscordURLParser
-from .formatters import format_message, format_message_full, format_user, format_channel, format_thread
+from .formatters import format_message, format_message_full, format_user, format_channel, format_thread, format_forum_channel
 from .commands import setup_commands
 from .access import AccessChecker
 
@@ -70,6 +70,25 @@ class DiscordBot:
             if not channel:
                 return {"error": "Channel not found"}
 
+            # Forum channels don't have messages directly - they contain threads (posts)
+            if isinstance(channel, discord.ForumChannel):
+                threads = []
+                for thread in channel.threads[:limit]:
+                    threads.append({
+                        "id": str(thread.id),
+                        "name": thread.name,
+                        "owner_id": str(thread.owner_id) if thread.owner_id else None,
+                        "created_at": thread.created_at.isoformat() if thread.created_at else None,
+                        "message_count": thread.message_count,
+                        "archived": thread.archived,
+                        "type": "forum_post"
+                    })
+                return {
+                    "channel_type": "forum",
+                    "note": "Forum channels contain threads (posts), not messages. Use the thread IDs to fetch messages from individual posts.",
+                    "threads": threads
+                }
+
             messages = []
             before = None
             if before_message_id:
@@ -94,6 +113,31 @@ class DiscordBot:
 
             messages = []
             count = 0
+
+            # Forum channels don't have messages directly - search within all threads
+            if isinstance(channel, discord.ForumChannel):
+                threads_searched = 0
+                for thread in channel.threads:
+                    if count >= limit:
+                        break
+                    threads_searched += 1
+                    try:
+                        async for message in thread.history(limit=500):
+                            if count >= limit:
+                                break
+                            if query.lower() in message.content.lower():
+                                messages.append(format_message(message))
+                                count += 1
+                    except discord.Forbidden:
+                        continue
+                    except Exception as e:
+                        logger.warning(f"Error searching thread {thread.name}: {str(e)}")
+                        continue
+                return {
+                    "messages": messages,
+                    "channel_type": "forum",
+                    "threads_searched": threads_searched
+                }
 
             async for message in channel.history(limit=1000):
                 if count >= limit:
@@ -120,6 +164,7 @@ class DiscordBot:
             messages = []
             total_found = 0
             channels_searched = 0
+            forums_searched = 0
 
             for channel in guild.text_channels:
                 if total_found >= limit:
@@ -151,10 +196,46 @@ class DiscordBot:
                     logger.warning(f"Error searching channel {channel.name}: {str(e)}")
                     continue
 
+            # Also search forum channels (each thread within forums)
+            for forum in guild.forum_channels:
+                if total_found >= limit:
+                    break
+
+                # Check channel access
+                if not self.access.is_channel_allowed(forum):
+                    continue
+
+                if not self.access.can_read_channel(forum):
+                    continue
+
+                forums_searched += 1
+
+                # Search within each thread (post) in the forum
+                for thread in forum.threads:
+                    if total_found >= limit:
+                        break
+
+                    try:
+                        thread_limit = min(300, limit - total_found)
+                        async for message in thread.history(limit=thread_limit):
+                            if total_found >= limit:
+                                break
+
+                            if query.lower() in message.content.lower():
+                                messages.append(format_message(message))
+                                total_found += 1
+
+                    except discord.Forbidden:
+                        continue
+                    except Exception as e:
+                        logger.warning(f"Error searching forum thread {thread.name}: {str(e)}")
+                        continue
+
             return {
                 "messages": messages,
                 "total_found": total_found,
                 "channels_searched": channels_searched,
+                "forums_searched": forums_searched,
                 "query": query,
                 "guild_name": guild.name
             }
@@ -217,6 +298,25 @@ class DiscordBot:
                     except Exception as e:
                         logger.warning(f"Error getting threads for channel {channel.name}: {e}")
 
+                # Add forum channels
+                for forum in guild.forum_channels:
+                    # Check config-based access
+                    if not self.access.is_channel_allowed(forum):
+                        continue
+
+                    # Check if bot can actually read this channel
+                    if not self.access.can_read_channel(forum):
+                        continue
+
+                    channels.append(format_forum_channel(forum))
+
+                    # Add active threads (posts) from this forum
+                    try:
+                        for thread in forum.threads:
+                            channels.append(format_thread(thread))
+                    except Exception as e:
+                        logger.warning(f"Error getting threads for forum {forum.name}: {e}")
+
             return {"channels": channels}
         except Exception as e:
             return {"error": str(e)}
@@ -251,6 +351,21 @@ class DiscordBot:
                 info["archived"] = channel.archived
                 info["locked"] = channel.locked
                 info["auto_archive_duration"] = channel.auto_archive_duration
+            elif isinstance(channel, discord.ForumChannel):
+                # Forum channel info
+                info["type"] = "forum"
+                info["topic"] = channel.topic
+                info["category"] = channel.category.name if channel.category else None
+                info["category_id"] = str(channel.category_id) if channel.category_id else None
+                info["position"] = channel.position
+                info["nsfw"] = channel.nsfw
+                info["default_auto_archive_duration"] = channel.default_auto_archive_duration
+                # List active threads (posts) in this forum
+                info["thread_count"] = len(channel.threads)
+                info["threads"] = [
+                    {"id": str(t.id), "name": t.name, "archived": t.archived}
+                    for t in channel.threads
+                ]
             else:
                 # Text channel info
                 info["type"] = "text"

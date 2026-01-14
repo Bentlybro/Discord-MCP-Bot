@@ -105,3 +105,17 @@ def format_thread(thread: discord.Thread) -> dict:
         "archived": thread.archived,
         "member_count": thread.member_count or 0
     }
+
+
+def format_forum_channel(channel: discord.ForumChannel) -> dict:
+    """Format a Discord forum channel into a dictionary"""
+    return {
+        "id": str(channel.id),
+        "name": f"📋 {channel.name}",
+        "type": "forum",
+        "guild_id": str(channel.guild.id),
+        "guild_name": channel.guild.name,
+        "topic": channel.topic,
+        "category": channel.category.name if channel.category else None,
+        "thread_count": len(channel.threads)
+    }
