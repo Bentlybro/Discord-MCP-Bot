@@ -197,7 +197,7 @@ class DiscordBot:
                     continue
 
             # Also search forum channels (each thread within forums)
-            for forum in guild.forum_channels:
+            for forum in [c for c in guild.channels if isinstance(c, discord.ForumChannel)]:
                 if total_found >= limit:
                     break
 
@@ -298,8 +298,8 @@ class DiscordBot:
                     except Exception as e:
                         logger.warning(f"Error getting threads for channel {channel.name}: {e}")
 
-                # Add forum channels
-                for forum in guild.forum_channels:
+                # Add forum channels (filter by type for compatibility)
+                for forum in [c for c in guild.channels if isinstance(c, discord.ForumChannel)]:
                     # Check config-based access
                     if not self.access.is_channel_allowed(forum):
                         continue
