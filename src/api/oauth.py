@@ -475,7 +475,11 @@ async def handle_refresh_token_grant(refresh_token: Optional[str]):
             status_code=400
         )
 
-    if token_record.refresh_expires_at and datetime.now(timezone.utc) > token_record.refresh_expires_at:
+    # Make naive datetime timezone-aware for comparison (assume stored as UTC)
+    refresh_expires = token_record.refresh_expires_at
+    if refresh_expires and refresh_expires.tzinfo is None:
+        refresh_expires = refresh_expires.replace(tzinfo=timezone.utc)
+    if refresh_expires and datetime.now(timezone.utc) > refresh_expires:
         return JSONResponse(
             {"error": "invalid_grant", "error_description": "Refresh token expired"},
             status_code=400
