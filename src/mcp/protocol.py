@@ -91,6 +91,7 @@ class MCPProtocolHandler:
             "get_discord_messages": self._handle_get_messages,
             "search_discord_messages": self._handle_search_messages,
             "search_guild_messages": self._handle_search_guild_messages,
+            "get_guild_activity_summary": self._handle_get_guild_activity_summary,
             "get_message_by_url": self._handle_get_message_by_url,
             "get_message_by_id": self._handle_get_message_by_id,
             "get_pinned_messages": self._handle_get_pinned_messages,
@@ -134,6 +135,12 @@ class MCPProtocolHandler:
             int(args["guild_id"]),
             args["query"],
             args.get("limit", 50)
+        )
+
+    async def _handle_get_guild_activity_summary(self, args: dict, user_id: str):
+        return await self.discord_bot.get_guild_activity_summary(
+            int(args["guild_id"]),
+            args.get("hours", 24)
         )
 
     async def _handle_get_message_by_url(self, args: dict, user_id: str):

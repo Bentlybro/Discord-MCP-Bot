@@ -242,6 +242,132 @@ class DiscordBot:
         except Exception as e:
             return {"error": str(e)}
 
+    async def get_guild_activity_summary(self, guild_id: int, hours: int = 24) -> dict:
+        """Get activity summary for all channels in a guild without fetching full message content"""
+        try:
+            if not self.check_guild_access(guild_id):
+                return {"error": "Access denied to this guild"}
+
+            guild = self.bot.get_guild(guild_id)
+            if not guild:
+                return {"error": "Guild not found"}
+
+            from datetime import datetime, timedelta, timezone
+            cutoff_time = datetime.now(timezone.utc) - timedelta(hours=hours)
+
+            channel_summaries = []
+
+            # Process text channels
+            for channel in guild.text_channels:
+                if not self.access.is_channel_allowed(channel):
+                    continue
+                if not self.access.can_read_channel(channel):
+                    continue
+
+                try:
+                    message_count = 0
+                    participants = set()
+                    last_message_time = None
+                    sample_topics = []
+
+                    async for message in channel.history(limit=100, after=cutoff_time):
+                        message_count += 1
+                        participants.add(message.author.display_name)
+                        if last_message_time is None:
+                            last_message_time = message.created_at
+                        # Grab first few words of some messages as topic hints
+                        if len(sample_topics) < 3 and len(message.content) > 20:
+                            sample_topics.append(message.content[:50] + "..." if len(message.content) > 50 else message.content)
+
+                    channel_summaries.append({
+                        "id": str(channel.id),
+                        "name": channel.name,
+                        "type": "text",
+                        "category": channel.category.name if channel.category else None,
+                        "topic": channel.topic,
+                        "message_count": message_count,
+                        "participant_count": len(participants),
+                        "participants": list(participants)[:10],  # Top 10 only
+                        "last_activity": last_message_time.isoformat() if last_message_time else None,
+                        "sample_topics": sample_topics
+                    })
+
+                except discord.Forbidden:
+                    continue
+                except Exception as e:
+                    logger.warning(f"Error getting summary for channel {channel.name}: {str(e)}")
+                    continue
+
+            # Process forum channels
+            for forum in [c for c in guild.channels if isinstance(c, discord.ForumChannel)]:
+                if not self.access.is_channel_allowed(forum):
+                    continue
+                if not self.access.can_read_channel(forum):
+                    continue
+
+                try:
+                    thread_summaries = []
+                    total_messages = 0
+                    all_participants = set()
+
+                    for thread in forum.threads:
+                        thread_message_count = 0
+                        thread_participants = set()
+                        last_thread_message = None
+
+                        try:
+                            async for message in thread.history(limit=50, after=cutoff_time):
+                                thread_message_count += 1
+                                thread_participants.add(message.author.display_name)
+                                all_participants.add(message.author.display_name)
+                                if last_thread_message is None:
+                                    last_thread_message = message.created_at
+
+                            if thread_message_count > 0:
+                                thread_summaries.append({
+                                    "id": str(thread.id),
+                                    "name": thread.name,
+                                    "message_count": thread_message_count,
+                                    "participant_count": len(thread_participants),
+                                    "last_activity": last_thread_message.isoformat() if last_thread_message else None
+                                })
+                                total_messages += thread_message_count
+
+                        except discord.Forbidden:
+                            continue
+                        except Exception as e:
+                            logger.warning(f"Error getting summary for thread {thread.name}: {str(e)}")
+                            continue
+
+                    channel_summaries.append({
+                        "id": str(forum.id),
+                        "name": forum.name,
+                        "type": "forum",
+                        "category": forum.category.name if forum.category else None,
+                        "topic": forum.topic,
+                        "total_message_count": total_messages,
+                        "active_thread_count": len(thread_summaries),
+                        "participant_count": len(all_participants),
+                        "active_threads": sorted(thread_summaries, key=lambda x: x["message_count"], reverse=True)[:10]
+                    })
+
+                except Exception as e:
+                    logger.warning(f"Error getting summary for forum {forum.name}: {str(e)}")
+                    continue
+
+            # Sort by activity (message count)
+            channel_summaries.sort(key=lambda x: x.get("message_count", 0) + x.get("total_message_count", 0), reverse=True)
+
+            return {
+                "guild_name": guild.name,
+                "guild_id": str(guild.id),
+                "time_window_hours": hours,
+                "total_channels": len(channel_summaries),
+                "channels": channel_summaries
+            }
+        except Exception as e:
+            return {"error": str(e)}
+
     async def get_message_by_url(self, message_url: str) -> dict:
         """Get a specific message by Discord URL"""
         try:

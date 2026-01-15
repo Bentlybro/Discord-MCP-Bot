@@ -7,13 +7,13 @@ MCP_TOOLS = [
     # ========== Reading Messages ==========
     {
         "name": "get_discord_messages",
-        "description": "Fetch recent messages from a Discord channel. Returns messages in reverse chronological order (newest first). Use 'before_message_id' for pagination to fetch older messages.",
+        "description": "Fetch recent messages from a Discord channel. Returns messages in reverse chronological order (newest first). IMPORTANT: Start with a small limit (10-20) to avoid flooding your context. Use 'before_message_id' pagination to fetch more messages incrementally if needed - pass the oldest message's ID to get the next batch.",
         "inputSchema": {
             "type": "object",
             "properties": {
                 "channel_id": {"type": "string", "description": "The Discord channel ID"},
-                "limit": {"type": "integer", "description": "Number of messages to fetch (default: 10, max: 100)"},
-                "before_message_id": {"type": "string", "description": "Fetch messages older than this message ID (for pagination)"}
+                "limit": {"type": "integer", "description": "Number of messages to fetch. Start small (10-20), use pagination for more. Default: 10, max: 100"},
+                "before_message_id": {"type": "string", "description": "Fetch messages older than this message ID. Use the oldest message's ID from previous results to paginate backwards through history"}
             },
             "required": ["channel_id"]
         }
@@ -84,35 +84,47 @@ MCP_TOOLS = [
     # ========== Searching ==========
     {
         "name": "search_discord_messages",
-        "description": "Search for messages containing specific text in a single channel. Case-insensitive. Good for finding discussions about a specific topic.",
+        "description": "Search for messages containing specific text in a single channel. Case-insensitive. Good for finding discussions about a specific topic. Also searches within forum channel threads.",
         "inputSchema": {
             "type": "object",
             "properties": {
                 "channel_id": {"type": "string", "description": "The Discord channel ID to search in"},
                 "query": {"type": "string", "description": "Text to search for (case-insensitive)"},
-                "limit": {"type": "integer", "description": "Max results to return (default: 10)"}
+                "limit": {"type": "integer", "description": "Max results to return. Keep small to preserve context (default: 10)"}
             },
             "required": ["channel_id", "query"]
         }
     },
     {
         "name": "search_guild_messages",
-        "description": "Search for messages across ALL channels in a server. Use this when you don't know which channel contains the information. More comprehensive but slower than single-channel search.",
+        "description": "Search for messages across ALL channels in a server, including forum threads. Use this when you don't know which channel contains the information. More comprehensive but slower than single-channel search.",
         "inputSchema": {
             "type": "object",
             "properties": {
                 "guild_id": {"type": "string", "description": "The Discord server/guild ID"},
                 "query": {"type": "string", "description": "Text to search for (case-insensitive)"},
-                "limit": {"type": "integer", "description": "Max total results (default: 50)"}
+                "limit": {"type": "integer", "description": "Max total results. Keep reasonable to preserve context (default: 50, max: 50)"}
             },
             "required": ["guild_id", "query"]
+        }
+    },
+    {
+        "name": "get_guild_activity_summary",
+        "description": "Get a lightweight activity summary for all channels in a server. Returns message counts, participant lists, and last activity times WITHOUT full message content. Use this FIRST to scout server activity before diving into specific channels. Much more context-efficient than fetching messages directly.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "guild_id": {"type": "string", "description": "The Discord server/guild ID"},
+                "hours": {"type": "integer", "description": "Time window to analyze in hours (default: 24). Use smaller values like 6-12 for very active servers."}
+            },
+            "required": ["guild_id"]
         }
     },
 
     # ========== Channels & Threads ==========
     {
         "name": "list_discord_channels",
-        "description": "List all Discord channels and threads the bot can access. Use this first to discover available channels and get their IDs. Only shows channels the bot has read permissions for.",
+        "description": "List all Discord channels, forums, and threads the bot can access. Use this first to discover available channels and get their IDs. Returns text channels, forum channels (with their posts/threads), and active threads. Only shows channels the bot has read permissions for.",
         "inputSchema": {
             "type": "object",
             "properties": {}
