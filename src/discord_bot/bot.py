@@ -64,11 +64,11 @@ class DiscordBot:
         """Get recent messages from a channel"""
         try:
             if not self.check_channel_access(channel_id):
-                return {"error": "Access denied to this channel"}
+                return {"error": "Access denied to this channel. The channel ID may be incorrect - use list_discord_channels to get valid channel IDs."}
 
             channel = self.bot.get_channel(channel_id)
             if not channel:
-                return {"error": "Channel not found"}
+                return {"error": "Channel not found. The channel ID may be invalid - use list_discord_channels to get valid channel IDs."}
 
             # Forum channels don't have messages directly - they contain threads (posts)
             if isinstance(channel, discord.ForumChannel):
@@ -105,11 +105,11 @@ class DiscordBot:
         """Search for messages in a specific channel"""
         try:
             if not self.check_channel_access(channel_id):
-                return {"error": "Access denied to this channel"}
+                return {"error": "Access denied to this channel. The channel ID may be incorrect - use list_discord_channels to get valid channel IDs."}
 
             channel = self.bot.get_channel(channel_id)
             if not channel:
-                return {"error": "Channel not found"}
+                return {"error": "Channel not found. The channel ID may be invalid - use list_discord_channels to get valid channel IDs."}
 
             messages = []
             count = 0
@@ -378,11 +378,11 @@ class DiscordBot:
             guild_id, channel_id, message_id = parsed
 
             if not self.check_channel_access(channel_id):
-                return {"error": "Access denied to this channel"}
+                return {"error": "Access denied to this channel. The channel ID may be incorrect - use list_discord_channels to get valid channel IDs."}
 
             channel = self.bot.get_channel(channel_id)
             if not channel:
-                return {"error": "Channel not found"}
+                return {"error": "Channel not found. The channel ID may be invalid - use list_discord_channels to get valid channel IDs."}
 
             try:
                 message = await channel.fetch_message(message_id)
@@ -451,11 +451,11 @@ class DiscordBot:
         """Get detailed information about a channel"""
         try:
             if not self.check_channel_access(channel_id):
-                return {"error": "Access denied to this channel"}
+                return {"error": "Access denied to this channel. The channel ID may be incorrect - use list_discord_channels to get valid channel IDs."}
 
             channel = self.bot.get_channel(channel_id)
             if not channel:
-                return {"error": "Channel not found"}
+                return {"error": "Channel not found. The channel ID may be invalid - use list_discord_channels to get valid channel IDs."}
 
             # Base info for all channel types
             info = {
@@ -515,11 +515,11 @@ class DiscordBot:
         """Send a message to a Discord channel"""
         try:
             if not self.check_channel_access(channel_id):
-                return {"error": "Access denied to this channel"}
+                return {"error": "Access denied to this channel. The channel ID may be incorrect - use list_discord_channels to get valid channel IDs."}
 
             channel = self.bot.get_channel(channel_id)
             if not channel:
-                return {"error": "Channel not found"}
+                return {"error": "Channel not found. The channel ID may be invalid - use list_discord_channels to get valid channel IDs."}
 
             if not self.access.can_send_to_channel(channel):
                 return {"error": "Bot doesn't have permission to send messages in this channel"}
@@ -571,7 +571,7 @@ class DiscordBot:
 
             channel = self.bot.get_channel(channel_id)
             if not channel:
-                return {"error": "Channel not found"}
+                return {"error": "Channel not found. The channel ID may be invalid - use list_discord_channels to get valid channel IDs."}
 
             def check(message):
                 if message.channel.id != channel_id:
@@ -681,11 +681,11 @@ class DiscordBot:
         """Get all pinned messages from a channel"""
         try:
             if not self.check_channel_access(channel_id):
-                return {"error": "Access denied to this channel"}
+                return {"error": "Access denied to this channel. The channel ID may be incorrect - use list_discord_channels to get valid channel IDs."}
 
             channel = self.bot.get_channel(channel_id)
             if not channel:
-                return {"error": "Channel not found"}
+                return {"error": "Channel not found. The channel ID may be invalid - use list_discord_channels to get valid channel IDs."}
 
             pinned = await channel.pins()
             messages = [format_message_full(msg) for msg in pinned]
@@ -705,11 +705,11 @@ class DiscordBot:
         """Get messages before and after a specific message for context"""
         try:
             if not self.check_channel_access(channel_id):
-                return {"error": "Access denied to this channel"}
+                return {"error": "Access denied to this channel. The channel ID may be incorrect - use list_discord_channels to get valid channel IDs."}
 
             channel = self.bot.get_channel(channel_id)
             if not channel:
-                return {"error": "Channel not found"}
+                return {"error": "Channel not found. The channel ID may be invalid - use list_discord_channels to get valid channel IDs."}
 
             # Fetch the target message
             try:
@@ -744,11 +744,11 @@ class DiscordBot:
         """Get a specific message by its ID"""
         try:
             if not self.check_channel_access(channel_id):
-                return {"error": "Access denied to this channel"}
+                return {"error": "Access denied to this channel. The channel ID may be incorrect - use list_discord_channels to get valid channel IDs."}
 
             channel = self.bot.get_channel(channel_id)
             if not channel:
-                return {"error": "Channel not found"}
+                return {"error": "Channel not found. The channel ID may be invalid - use list_discord_channels to get valid channel IDs."}
 
             try:
                 message = await channel.fetch_message(int(message_id))
@@ -767,11 +767,11 @@ class DiscordBot:
         """Trace back through a chain of message replies"""
         try:
             if not self.check_channel_access(channel_id):
-                return {"error": "Access denied to this channel"}
+                return {"error": "Access denied to this channel. The channel ID may be incorrect - use list_discord_channels to get valid channel IDs."}
 
             channel = self.bot.get_channel(channel_id)
             if not channel:
-                return {"error": "Channel not found"}
+                return {"error": "Channel not found. The channel ID may be invalid - use list_discord_channels to get valid channel IDs."}
 
             # Clamp max_depth
             max_depth = min(max(1, max_depth), 50)
@@ -821,11 +821,11 @@ class DiscordBot:
         """Edit a message that the bot previously sent"""
         try:
             if not self.check_channel_access(channel_id):
-                return {"error": "Access denied to this channel"}
+                return {"error": "Access denied to this channel. The channel ID may be incorrect - use list_discord_channels to get valid channel IDs."}
 
             channel = self.bot.get_channel(channel_id)
             if not channel:
-                return {"error": "Channel not found"}
+                return {"error": "Channel not found. The channel ID may be invalid - use list_discord_channels to get valid channel IDs."}
 
             try:
                 message = await channel.fetch_message(int(message_id))
@@ -852,11 +852,11 @@ class DiscordBot:
         """Delete a message that the bot previously sent"""
         try:
             if not self.check_channel_access(channel_id):
-                return {"error": "Access denied to this channel"}
+                return {"error": "Access denied to this channel. The channel ID may be incorrect - use list_discord_channels to get valid channel IDs."}
 
             channel = self.bot.get_channel(channel_id)
             if not channel:
-                return {"error": "Channel not found"}
+                return {"error": "Channel not found. The channel ID may be invalid - use list_discord_channels to get valid channel IDs."}
 
             try:
                 message = await channel.fetch_message(int(message_id))
@@ -884,11 +884,11 @@ class DiscordBot:
         """Create a new thread from a message or as a standalone thread"""
         try:
             if not self.check_channel_access(channel_id):
-                return {"error": "Access denied to this channel"}
+                return {"error": "Access denied to this channel. The channel ID may be incorrect - use list_discord_channels to get valid channel IDs."}
 
             channel = self.bot.get_channel(channel_id)
             if not channel:
-                return {"error": "Channel not found"}
+                return {"error": "Channel not found. The channel ID may be invalid - use list_discord_channels to get valid channel IDs."}
 
             # Validate auto_archive_duration
             valid_durations = [60, 1440, 4320, 10080]
@@ -975,11 +975,11 @@ class DiscordBot:
         """Download an attachment from a message"""
         try:
             if not self.check_channel_access(channel_id):
-                return {"error": "Access denied to this channel"}
+                return {"error": "Access denied to this channel. The channel ID may be incorrect - use list_discord_channels to get valid channel IDs."}
 
             channel = self.bot.get_channel(channel_id)
             if not channel:
-                return {"error": "Channel not found"}
+                return {"error": "Channel not found. The channel ID may be invalid - use list_discord_channels to get valid channel IDs."}
 
             try:
                 message = await channel.fetch_message(int(message_id))
