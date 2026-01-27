@@ -66,8 +66,8 @@ class APIRoutes:
                     headers={"Allow": "POST"}
                 )
             except Exception as e:
-                logger.error(f"MCP SSE handler error: {e}")
-                return Response(content=str(e), status_code=403)
+                logger.error(f"MCP SSE handler error: {e}", exc_info=True)
+                return Response(content="Authentication failed", status_code=403)
 
         @self.app.post("/mcp", summary="MCP Protocol Handler")
         async def mcp_handler(
@@ -80,9 +80,9 @@ class APIRoutes:
                 # Verify API key
                 user_id = await verify_api_key(credentials)
 
-                # Log request concisely
+                # Log request concisely without sensitive user identifiers
                 method = mcp_request.get('method', 'unknown')
-                logger.info(f"[User {user_id}] {method}")
+                logger.info(f"MCP request: {method}")
 
                 # Handle the MCP request
                 response_data = await self.mcp_handler.handle_request(mcp_request, user_id)
@@ -99,12 +99,12 @@ class APIRoutes:
                 return response_data
 
             except Exception as e:
-                logger.error(f"MCP handler error: {e}")
-                # Return proper JSON-RPC error
+                logger.error(f"MCP handler error: {e}", exc_info=True)
+                # Return proper JSON-RPC error with generic message to avoid exposing internals
                 error_response = {
                     "jsonrpc": "2.0",
                     "id": mcp_request.get("id"),
-                    "error": {"code": -32603, "message": str(e)}
+                    "error": {"code": -32603, "message": "Internal server error"}
                 }
                 return Response(
                     content=json.dumps(error_response),

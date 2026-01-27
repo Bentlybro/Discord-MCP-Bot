@@ -72,19 +72,44 @@ class Database:
             return result.scalar_one_or_none()
 
     async def get_user_by_api_key(self, api_key: str) -> Optional[User]:
-        """Get user by API key (expects plaintext API key, will hash and compare)"""
-        async with self.async_session() as session:
-            # Hash the provided API key
-            api_key_hash = User.hash_api_key(api_key)
+        """Get user by API key (expects plaintext API key, will hash and compare)
 
-            # Look up user by hash
+        Supports transparent migration from legacy SHA256 hashes to PBKDF2.
+        If a user authenticates with a legacy hash, it will be automatically
+        upgraded to PBKDF2.
+        """
+        async with self.async_session() as session:
+            # First, try the new PBKDF2 hash
+            api_key_hash = User.hash_api_key(api_key)
             result = await session.execute(
                 select(User).where(
                     User.api_key_hash == api_key_hash,
                     User.is_active == True
                 )
             )
-            return result.scalar_one_or_none()
+            user = result.scalar_one_or_none()
+
+            if user:
+                return user
+
+            # If not found, try the legacy SHA256 hash for migration
+            legacy_hash = User.hash_api_key_legacy(api_key)
+            result = await session.execute(
+                select(User).where(
+                    User.api_key_hash == legacy_hash,
+                    User.is_active == True
+                )
+            )
+            user = result.scalar_one_or_none()
+
+            if user:
+                # Transparently upgrade to PBKDF2 hash
+                user.api_key_hash = api_key_hash
+                await session.commit()
+                logger.info(f"Migrated API key hash to PBKDF2 for user: {user.discord_user_id}")
+                return user
+
+            return None
 
     async def update_user_usage(self, api_key: str):
         """Update user usage statistics"""

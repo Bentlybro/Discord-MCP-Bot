@@ -90,7 +90,7 @@ class User(Base):
     id = Column(Integer, primary_key=True)
     discord_user_id = Column(String(20), unique=True, nullable=False)
     discord_username = Column(String(100), nullable=False)
-    api_key_hash = Column(String(64), unique=True, nullable=False)  # SHA256 hash
+    api_key_hash = Column(String(64), unique=True, nullable=False)  # PBKDF2-HMAC-SHA256 hash
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=func.now())
     last_used = Column(DateTime, nullable=True)
@@ -105,7 +105,16 @@ class User(Base):
 
     @staticmethod
     def hash_api_key(api_key: str) -> str:
-        """Hash an API key using SHA256"""
+        """Hash an API key using a computationally expensive KDF (PBKDF2-HMAC-SHA256)"""
+        # Note: Using a fixed, application-wide salt keeps the hash deterministic
+        # so it can be used in equality comparisons in database queries.
+        salt = b"discord-mcp-api-key-v1"
+        dk = hashlib.pbkdf2_hmac("sha256", api_key.encode(), salt, 200_000, dklen=32)
+        return dk.hex()
+
+    @staticmethod
+    def hash_api_key_legacy(api_key: str) -> str:
+        """Legacy SHA256 hash - used only for migration from old hashes"""
         return hashlib.sha256(api_key.encode()).hexdigest()
 
     def update_usage(self):

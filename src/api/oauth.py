@@ -4,9 +4,10 @@ Implements RFC 8414, RFC 9728, and OAuth 2.1 with PKCE.
 """
 import hashlib
 import base64
+import json
 import logging
 from datetime import datetime, timedelta, timezone
-from typing import Optional
+from typing import Optional, List
 from urllib.parse import urlencode
 from pathlib import Path
 import secrets
@@ -21,6 +22,28 @@ from ..database.database import db
 from ..database.models import OAuthClient, AuthorizationCode, OAuthToken
 
 logger = logging.getLogger(__name__)
+
+
+async def validate_redirect_uri(client_id: str, redirect_uri: Optional[str]) -> bool:
+    """
+    Validate that a redirect_uri is registered for the given OAuth client.
+    Returns True if valid, False otherwise.
+    """
+    if not redirect_uri:
+        return True  # No redirect means we show the code on screen
+
+    client = await db.get_oauth_client(client_id)
+    if not client:
+        return False
+
+    # Parse registered redirect URIs from JSON
+    try:
+        registered_uris: List[str] = json.loads(client.redirect_uris) if client.redirect_uris else []
+    except (json.JSONDecodeError, TypeError):
+        registered_uris = []
+
+    # Check exact match against registered URIs
+    return redirect_uri in registered_uris
 
 router = APIRouter()
 
@@ -144,6 +167,13 @@ async def authorize(
             status_code=400
         )
 
+    # Validate redirect_uri against registered URIs early (before showing login)
+    if redirect_uri and not await validate_redirect_uri(client_id, redirect_uri):
+        return JSONResponse(
+            {"error": "invalid_request", "error_description": "Invalid redirect_uri"},
+            status_code=400
+        )
+
     # If Discord OAuth is configured, redirect to Discord
     if settings.discord_client_id and settings.discord_client_secret:
         auth_state = secrets.token_urlsafe(32)
@@ -223,8 +253,16 @@ async def authorize_submit(
         expires_at=expires_at
     )
 
-    # Redirect back to client with code
+    # Redirect back to client with code (only if redirect_uri is validated)
     if redirect_uri:
+        # Validate redirect_uri against registered URIs for security
+        if not await validate_redirect_uri(client_id, redirect_uri):
+            return templates.TemplateResponse("error.html", {
+                "request": request,
+                "title": "Invalid Redirect URI",
+                "message": "The redirect URI is not registered for this client"
+            }, status_code=400)
+
         params = {"code": code}
         if state:
             params["state"] = state
@@ -337,7 +375,16 @@ async def discord_callback(
     await db.delete_pending_auth(state)
 
     redirect_uri = pending["redirect_uri"]
+    client_id = pending["client_id"]
     if redirect_uri:
+        # Validate redirect_uri against registered URIs for security
+        if not await validate_redirect_uri(client_id, redirect_uri):
+            return templates.TemplateResponse("error.html", {
+                "request": request,
+                "title": "Invalid Redirect URI",
+                "message": "The redirect URI is not registered for this client"
+            }, status_code=400)
+
         params = {"code": auth_code}
         if pending["original_state"]:
             params["state"] = pending["original_state"]
