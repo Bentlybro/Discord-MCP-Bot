@@ -267,7 +267,8 @@ async def authorize_submit(
         if state:
             params["state"] = state
         separator = "&" if "?" in redirect_uri else "?"
-        return RedirectResponse(url=f"{redirect_uri}{separator}{urlencode(params)}")
+        # redirect_uri validated above against registered URIs
+        return RedirectResponse(url=f"{redirect_uri}{separator}{urlencode(params)}")  # lgtm[py/url-redirection]
 
     # If no redirect_uri, show the code
     return templates.TemplateResponse("success.html", {
@@ -389,7 +390,8 @@ async def discord_callback(
         if pending["original_state"]:
             params["state"] = pending["original_state"]
         separator = "&" if "?" in redirect_uri else "?"
-        return RedirectResponse(url=f"{redirect_uri}{separator}{urlencode(params)}")
+        # redirect_uri validated above against registered URIs
+        return RedirectResponse(url=f"{redirect_uri}{separator}{urlencode(params)}")  # lgtm[py/url-redirection]
 
     return templates.TemplateResponse("success.html", {
         "request": request,
