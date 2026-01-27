@@ -99,6 +99,7 @@ class MCPProtocolHandler:
             "trace_reply_chain": self._handle_trace_reply_chain,
             # Message actions
             "send_discord_message": self._handle_send_message,
+            "send_discord_file": self._handle_send_file,
             "ask_discord_question": self._handle_ask_question,
             "edit_message": self._handle_edit_message,
             "delete_message": self._handle_delete_message,
@@ -169,6 +170,16 @@ class MCPProtocolHandler:
         return await self.discord_bot.send_message(
             int(args["channel_id"]),
             args["content"],
+            args.get("reply_to_message_id"),
+            user_id
+        )
+
+    async def _handle_send_file(self, args: dict, user_id: str):
+        return await self.discord_bot.send_file(
+            int(args["channel_id"]),
+            args["filename"],
+            args["file_content"],
+            args.get("content"),
             args.get("reply_to_message_id"),
             user_id
         )
