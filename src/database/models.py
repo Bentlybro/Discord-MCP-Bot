@@ -114,8 +114,13 @@ class User(Base):
 
     @staticmethod
     def hash_api_key_legacy(api_key: str) -> str:
-        """Legacy SHA256 hash - used only for migration from old hashes"""
-        return hashlib.sha256(api_key.encode()).hexdigest()
+        """Legacy SHA256 hash - used only for migration from old hashes.
+
+        NOTE: This intentionally uses SHA256 (not PBKDF2) to verify existing
+        database entries that were hashed with the old algorithm. Once all users
+        have authenticated and been migrated to PBKDF2, this method can be removed.
+        """
+        return hashlib.sha256(api_key.encode()).hexdigest()  # lgtm[py/weak-sensitive-data-hashing]
 
     def update_usage(self):
         """Update usage statistics"""
