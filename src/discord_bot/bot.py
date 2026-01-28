@@ -8,6 +8,7 @@ import asyncio
 import aiohttp
 import base64
 import io
+import re
 from discord.ext import commands
 from typing import Optional
 
@@ -595,11 +596,22 @@ class DiscordBot:
                 except discord.Forbidden:
                     return {"error": "No permission to access reply target message"}
 
-            # Try to decode as base64, fall back to plain text
-            try:
-                file_bytes = base64.b64decode(file_content)
-            except Exception:
-                # Not base64, treat as plain text
+            # Check if content looks like valid base64 before attempting decode
+            # base64.b64decode() is too permissive and produces garbage for non-base64 input
+            def is_valid_base64(s: str) -> bool:
+                # Must be valid length (multiple of 4) and only contain base64 chars
+                if len(s) % 4 != 0:
+                    return False
+                pattern = r'^[A-Za-z0-9+/]*={0,2}$'
+                return bool(re.match(pattern, s))
+
+            # Try to decode as base64 only if it looks valid, otherwise treat as plain text
+            if is_valid_base64(file_content):
+                try:
+                    file_bytes = base64.b64decode(file_content)
+                except Exception:
+                    file_bytes = file_content.encode('utf-8')
+            else:
                 file_bytes = file_content.encode('utf-8')
 
             # Check file size (Discord limit is 25MB for most servers, 8MB without Nitro boost)
