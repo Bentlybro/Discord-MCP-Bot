@@ -7,6 +7,7 @@ import logging
 import asyncio
 import aiohttp
 import base64
+import io
 from discord.ext import commands
 from typing import Optional
 
@@ -558,6 +559,87 @@ class DiscordBot:
             return {"error": "Bot doesn't have permission to send messages"}
         except Exception as e:
             logger.error(f"Error sending message: {str(e)}")
+            return {"error": str(e)}
+
+    async def send_file(self, channel_id: int, filename: str, file_content: str,
+                       content: Optional[str] = None, reply_to_message_id: Optional[str] = None,
+                       requesting_user_id: Optional[str] = None) -> dict:
+        """Send a file to a Discord channel
+        
+        Args:
+            channel_id: The Discord channel ID
+            filename: Name for the file (e.g., 'report.md', 'data.json')
+            file_content: Base64-encoded file content OR plain text content
+            content: Optional message text to accompany the file
+            reply_to_message_id: Optional message ID to reply to
+            requesting_user_id: User ID for attribution
+        """
+        try:
+            if not self.check_channel_access(channel_id):
+                return {"error": "Access denied to this channel. The channel ID may be incorrect - use list_discord_channels to get valid channel IDs."}
+
+            channel = self.bot.get_channel(channel_id)
+            if not channel:
+                return {"error": "Channel not found. The channel ID may be invalid - use list_discord_channels to get valid channel IDs."}
+
+            if not self.access.can_send_to_channel(channel):
+                return {"error": "Bot doesn't have permission to send messages in this channel"}
+
+            # Handle reply if specified
+            reference = None
+            if reply_to_message_id:
+                try:
+                    reference = await channel.fetch_message(int(reply_to_message_id))
+                except discord.NotFound:
+                    return {"error": "Reply target message not found"}
+                except discord.Forbidden:
+                    return {"error": "No permission to access reply target message"}
+
+            # Try to decode as base64, fall back to plain text
+            try:
+                file_bytes = base64.b64decode(file_content)
+            except Exception:
+                # Not base64, treat as plain text
+                file_bytes = file_content.encode('utf-8')
+
+            # Check file size (Discord limit is 25MB for most servers, 8MB without Nitro boost)
+            if len(file_bytes) > 25 * 1024 * 1024:
+                return {"error": "File too large (max 25MB)"}
+
+            # Create Discord file object
+            file_obj = discord.File(io.BytesIO(file_bytes), filename=filename)
+
+            # Add attribution footer if we have a requesting user
+            final_content = content or ""
+            if requesting_user_id:
+                try:
+                    requesting_user = self.bot.get_user(int(requesting_user_id))
+                    if requesting_user:
+                        attribution = f"\n\n*— Sent by {requesting_user.display_name}'s Claude*"
+                    else:
+                        attribution = f"\n\n*— Sent by <@{requesting_user_id}>'s Claude*"
+                    final_content = f"{content}{attribution}" if content else attribution.strip()
+                except Exception as e:
+                    logger.warning(f"Failed to add attribution: {e}")
+
+            sent_message = await channel.send(
+                content=final_content if final_content else None,
+                file=file_obj,
+                reference=reference
+            )
+
+            return {
+                "success": True,
+                "message": format_message(sent_message),
+                "file": {
+                    "filename": filename,
+                    "size": len(file_bytes)
+                }
+            }
+        except discord.Forbidden:
+            return {"error": "Bot doesn't have permission to send files"}
+        except Exception as e:
+            logger.error(f"Error sending file: {str(e)}")
             return {"error": str(e)}
 
     async def wait_for_reply(self, channel_id: int, question: str, timeout: int = 300,

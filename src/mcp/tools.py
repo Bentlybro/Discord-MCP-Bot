@@ -171,6 +171,21 @@ MCP_TOOLS = [
         }
     },
     {
+        "name": "send_discord_file",
+        "description": "Send a file to a Discord channel. Use for sharing reports, code files, logs, data exports, or any file up to 25MB. The file content can be plain text or base64-encoded binary data. Messages include attribution.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "channel_id": {"type": "string", "description": "The Discord channel ID"},
+                "filename": {"type": "string", "description": "Name for the file including extension (e.g., 'report.md', 'data.json', 'logs.txt')"},
+                "file_content": {"type": "string", "description": "File content - either plain text or base64-encoded binary data"},
+                "content": {"type": "string", "description": "Optional message text to accompany the file"},
+                "reply_to_message_id": {"type": "string", "description": "Message ID to reply to (optional)"}
+            },
+            "required": ["channel_id", "filename", "file_content"]
+        }
+    },
+    {
         "name": "ask_discord_question",
         "description": "Send a question and wait for a reply. Use this for interactive conversations where you need a response before continuing. Blocks until someone replies or timeout.",
         "inputSchema": {
