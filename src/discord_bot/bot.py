@@ -7,6 +7,7 @@ import logging
 import asyncio
 import aiohttp
 import base64
+import io
 from discord.ext import commands
 from typing import Optional
 
@@ -606,7 +607,6 @@ class DiscordBot:
                 return {"error": "File too large (max 25MB)"}
 
             # Create Discord file object
-            import io
             file_obj = discord.File(io.BytesIO(file_bytes), filename=filename)
 
             # Add attribution footer if we have a requesting user
