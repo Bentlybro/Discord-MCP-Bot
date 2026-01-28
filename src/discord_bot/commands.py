@@ -47,7 +47,7 @@ async def handle_register(interaction: discord.Interaction):
 
 **To connect with Claude Code or Claude Desktop:**
 ```bash
-claude mcp add discord-mcp-bot {server_url}/mcp
+claude mcp add --transport http discord-mcp-bot {server_url}/mcp
 ```
 Then select "Authenticate" when prompted - you'll log in with Discord.
 
@@ -66,7 +66,7 @@ Use `/apikey` if you need an API key for manual authentication.""",
 
 **To connect with Claude Code:**
 ```bash
-claude mcp add discord-mcp-bot {server_url}/mcp
+claude mcp add --transport http discord-mcp-bot {server_url}/mcp
 ```
 Then select **"Authenticate"** - you'll log in with Discord automatically!
 
@@ -117,7 +117,7 @@ async def handle_apikey(interaction: discord.Interaction):
 **When to use this:**
 API keys are a backup for when OAuth doesn't work. The recommended way is:
 ```bash
-claude mcp add discord-mcp-bot {server_url}/mcp
+claude mcp add --transport http discord-mcp-bot {server_url}/mcp
 ```
 Then authenticate with Discord when prompted.
 
@@ -163,7 +163,7 @@ async def handle_status(interaction: discord.Interaction):
 
 **Connect to Claude:**
 ```bash
-claude mcp add discord-mcp-bot {server_url}/mcp
+claude mcp add --transport http discord-mcp-bot {server_url}/mcp
 ```
 
 **Commands:**
