@@ -7,12 +7,12 @@
     <link rel="stylesheet" href="/static/css/auth.css">
 </head>
 <body>
-    <div class="container">
-        <h1 style="color: #dc3545;">{{ title }}</h1>
-        <p>{{ message }}</p>
-        <p class="help">
-            <a href="javascript:history.back()" style="color: #5865F2;">Go Back</a>
-        </p>
+    <div class="container error-container">
+        <div class="success-icon" style="background: linear-gradient(135deg, #ff5252, #ff1744);">✕</div>
+        <h1>{{ title }}</h1>
+        <p class="error-message">{{ message }}</p>
+        <div class="divider"></div>
+        <a href="javascript:history.back()" style="color: #5865F2; text-decoration: none; font-size: 14px;">← Go Back</a>
     </div>
 </body>
 </html>

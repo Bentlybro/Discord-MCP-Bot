@@ -4,7 +4,7 @@
 
 body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    background: linear-gradient(135deg, #5865F2 0%, #7289DA 100%);
+    background: #1a1a2e;
     min-height: 100vh;
     margin: 0;
     display: flex;
@@ -13,43 +13,51 @@ body {
 }
 
 .container {
-    background: white;
+    background: #16213e;
     padding: 40px;
-    border-radius: 12px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
-    max-width: 400px;
+    border-radius: 16px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+    max-width: 420px;
     width: 90%;
     text-align: center;
+    border: 1px solid #2a3a5c;
 }
 
 h1 {
-    color: #5865F2;
-    margin-bottom: 10px;
+    color: #fff;
+    margin-bottom: 8px;
     margin-top: 0;
+    font-size: 24px;
+    font-weight: 600;
 }
 
 .subtitle {
-    color: #666;
+    color: #8892b0;
     margin-bottom: 30px;
+    font-size: 14px;
 }
 
 .error {
-    background: #fee;
-    border: 1px solid #fcc;
-    color: #c00;
-    padding: 10px;
-    border-radius: 6px;
+    background: rgba(255, 82, 82, 0.1);
+    border: 1px solid rgba(255, 82, 82, 0.3);
+    color: #ff5252;
+    padding: 12px;
+    border-radius: 8px;
     margin-bottom: 20px;
+    font-size: 14px;
 }
 
 input[type="password"],
 input[type="text"] {
     width: 100%;
-    padding: 12px;
-    border: 2px solid #ddd;
-    border-radius: 6px;
+    padding: 14px 16px;
+    border: 2px solid #2a3a5c;
+    border-radius: 8px;
     font-size: 16px;
     margin-bottom: 20px;
+    background: #1a1a2e;
+    color: #fff;
+    transition: border-color 0.2s;
 }
 
 input[type="password"]:focus,
@@ -58,62 +66,119 @@ input[type="text"]:focus {
     outline: none;
 }
 
+input[type="password"]::placeholder,
+input[type="text"]::placeholder {
+    color: #5a6a8a;
+}
+
 button {
     width: 100%;
-    padding: 12px;
+    padding: 14px;
     background: #5865F2;
     color: white;
     border: none;
-    border-radius: 6px;
+    border-radius: 8px;
     font-size: 16px;
+    font-weight: 500;
     cursor: pointer;
-    transition: background 0.2s;
+    transition: all 0.2s;
 }
 
 button:hover {
     background: #4752C4;
+    transform: translateY(-1px);
 }
 
 button:disabled {
-    background: #999;
+    background: #3a4a6c;
     cursor: not-allowed;
+    transform: none;
 }
 
 .help {
-    margin-top: 20px;
-    font-size: 14px;
-    color: #666;
+    margin-top: 24px;
+    font-size: 13px;
+    color: #5a6a8a;
 }
 
 .help code {
-    background: #f0f0f0;
-    padding: 2px 6px;
+    background: #1a1a2e;
+    padding: 2px 8px;
     border-radius: 4px;
-    font-family: monospace;
+    font-family: 'SF Mono', Monaco, monospace;
+    color: #64ffda;
 }
 
+/* Success page styles */
 .success-container {
     text-align: center;
 }
 
-.success-container h1 {
-    color: #5865F2;
+.success-icon {
+    width: 80px;
+    height: 80px;
+    background: linear-gradient(135deg, #5865F2, #7289DA);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 24px;
+    font-size: 40px;
+}
+
+.username {
+    color: #64ffda;
+    font-size: 20px;
+    font-weight: 600;
+    margin-bottom: 8px;
+}
+
+.success-message {
+    color: #8892b0;
+    font-size: 14px;
+    margin-bottom: 24px;
+    line-height: 1.5;
 }
 
 .auth-code {
-    background: #f0f0f0;
-    padding: 15px 25px;
-    font-size: 18px;
-    font-family: monospace;
-    border-radius: 6px;
-    display: inline-block;
+    background: #1a1a2e;
+    padding: 16px 24px;
+    font-size: 14px;
+    font-family: 'SF Mono', Monaco, monospace;
+    border-radius: 8px;
+    display: block;
     margin: 20px 0;
     word-break: break-all;
+    color: #64ffda;
+    border: 1px solid #2a3a5c;
 }
 
 .copy-btn {
     width: auto;
-    padding: 8px 16px;
+    padding: 10px 24px;
     font-size: 14px;
-    margin-top: 10px;
+    margin-top: 8px;
+}
+
+.divider {
+    height: 1px;
+    background: #2a3a5c;
+    margin: 24px 0;
+}
+
+.close-hint {
+    color: #5a6a8a;
+    font-size: 13px;
+    margin-top: 24px;
+}
+
+/* Error page styles */
+.error-container h1 {
+    color: #ff5252;
+}
+
+.error-message {
+    color: #8892b0;
+    font-size: 14px;
+    line-height: 1.6;
 }
