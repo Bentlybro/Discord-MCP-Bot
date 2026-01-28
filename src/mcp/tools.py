@@ -172,15 +172,16 @@ MCP_TOOLS = [
     },
     {
         "name": "send_discord_file",
-        "description": "Send a file to a Discord channel. Use for sharing reports, code files, logs, data exports, or any file up to 25MB. The file content can be plain text or base64-encoded binary data. Messages include attribution.",
+        "description": "Send a file to a Discord channel. Use for sharing reports, code files, logs, data exports, or any file up to 25MB. For text files, send content directly. For binary files (images, PDFs), base64-encode the content and set is_base64=true. Messages include attribution.",
         "inputSchema": {
             "type": "object",
             "properties": {
                 "channel_id": {"type": "string", "description": "The Discord channel ID"},
-                "filename": {"type": "string", "description": "Name for the file including extension (e.g., 'report.md', 'data.json', 'logs.txt')"},
-                "file_content": {"type": "string", "description": "File content - either plain text or base64-encoded binary data"},
+                "filename": {"type": "string", "description": "Name for the file including extension (e.g., 'report.md', 'data.json', 'image.png')"},
+                "file_content": {"type": "string", "description": "File content - plain text for text files, or base64-encoded string for binary files"},
                 "content": {"type": "string", "description": "Optional message text to accompany the file"},
-                "reply_to_message_id": {"type": "string", "description": "Message ID to reply to (optional)"}
+                "reply_to_message_id": {"type": "string", "description": "Message ID to reply to (optional)"},
+                "is_base64": {"type": "boolean", "description": "Set to true if file_content is base64-encoded binary data (e.g., for images, PDFs). Default: false (plain text)"}
             },
             "required": ["channel_id", "filename", "file_content"]
         }
