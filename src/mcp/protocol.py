@@ -181,7 +181,8 @@ class MCPProtocolHandler:
             args["file_content"],
             args.get("content"),
             args.get("reply_to_message_id"),
-            user_id
+            user_id,
+            args.get("is_base64", False)
         )
 
     async def _handle_ask_question(self, args: dict, user_id: str):

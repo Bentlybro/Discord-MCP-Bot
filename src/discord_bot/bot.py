@@ -8,7 +8,6 @@ import asyncio
 import aiohttp
 import base64
 import io
-import re
 from discord.ext import commands
 from typing import Optional
 
@@ -564,16 +563,17 @@ class DiscordBot:
 
     async def send_file(self, channel_id: int, filename: str, file_content: str,
                        content: Optional[str] = None, reply_to_message_id: Optional[str] = None,
-                       requesting_user_id: Optional[str] = None) -> dict:
+                       requesting_user_id: Optional[str] = None, is_base64: bool = False) -> dict:
         """Send a file to a Discord channel
         
         Args:
             channel_id: The Discord channel ID
             filename: Name for the file (e.g., 'report.md', 'data.json')
-            file_content: Base64-encoded file content OR plain text content
+            file_content: File content - plain text or base64-encoded binary data
             content: Optional message text to accompany the file
             reply_to_message_id: Optional message ID to reply to
             requesting_user_id: User ID for attribution
+            is_base64: If True, file_content is base64-encoded binary data. If False, treat as plain text.
         """
         try:
             if not self.check_channel_access(channel_id):
@@ -596,21 +596,12 @@ class DiscordBot:
                 except discord.Forbidden:
                     return {"error": "No permission to access reply target message"}
 
-            # Check if content looks like valid base64 before attempting decode
-            # base64.b64decode() is too permissive and produces garbage for non-base64 input
-            def is_valid_base64(s: str) -> bool:
-                # Must be valid length (multiple of 4) and only contain base64 chars
-                if len(s) % 4 != 0:
-                    return False
-                pattern = r'^[A-Za-z0-9+/]*={0,2}$'
-                return bool(re.match(pattern, s))
-
-            # Try to decode as base64 only if it looks valid, otherwise treat as plain text
-            if is_valid_base64(file_content):
+            # Decode file content based on explicit is_base64 flag
+            if is_base64:
                 try:
                     file_bytes = base64.b64decode(file_content)
-                except Exception:
-                    file_bytes = file_content.encode('utf-8')
+                except Exception as e:
+                    return {"error": f"Invalid base64 content: {str(e)}"}
             else:
                 file_bytes = file_content.encode('utf-8')
 
